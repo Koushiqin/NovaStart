@@ -13,6 +13,7 @@ if str(BACKEND_ROOT) not in sys.path:
 
 from app.config import settings  # noqa: E402
 from app.db import Base  # noqa: E402
+import app.models  # noqa: E402,F401  导入即注册全部模型，供 autogenerate 发现
 
 config = context.config
 
