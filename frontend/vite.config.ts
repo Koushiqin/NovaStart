@@ -13,8 +13,9 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      // dev 下把 /api 转发到本地后端
+      // dev 下把 /api 与 /dev 转发到本地后端
       "/api": "http://127.0.0.1:8000",
+      "/dev": "http://127.0.0.1:8000",
     },
   },
 })
