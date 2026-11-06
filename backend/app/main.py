@@ -5,9 +5,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.clock import Clock
 from app.db import engine, get_session
+from app.routers import session as session_router
+from app.routers import task as task_router
 from app.seed import reset_seed
 
 app = FastAPI(title="NovaStart")
+
+app.include_router(task_router.router)
+app.include_router(session_router.router)
 
 app.add_middleware(
     CORSMiddleware,
