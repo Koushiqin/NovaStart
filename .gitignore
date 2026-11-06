@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# 环境变量（仅保留模板 .env.example）
+.env
+
+# 前端
+node_modules/
+dist/
+
+# 工具与系统文件
+.pytest_cache/
+.vite/
+.DS_Store
+Thumbs.db
