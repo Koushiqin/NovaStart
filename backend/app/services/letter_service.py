@@ -10,6 +10,7 @@ from app.models.day_task import DayTask
 from app.models.letter import Letter
 from app.models.reflection import Reflection
 from app.models.session import Session
+from app.models.user import User
 from app.services import user_service
 from app.services.settle_service import SETTLEABLE_STATUSES
 
@@ -103,6 +104,10 @@ async def send(
     )
     if already is not None:
         return "already_sent", None
+
+    # 先锁收件人 users 行：FOR UPDATE 只锁已存在的 letters 行，锁不住并发插入的幻影行；
+    # 锁顺序统一为 users 行 → letters 行，dismiss/favorite 不锁 users，无环。
+    await db.scalar(select(User.id).where(User.id == recipient.id).with_for_update())
 
     # 行锁锁住收件人全部已投递且未处理、未过期的信，并发投递时串行化计数
     unhandled = (
