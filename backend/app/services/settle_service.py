@@ -3,7 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.session import Session
 
-_SETTLEABLE_STATUSES = ("completed", "settled")
+# 结算可访问/可推进的会话状态；供 session / reflection 服务共享同一口径
+SETTLEABLE_STATUSES = ("completed", "settled")
 
 
 async def advance(db: AsyncSession, session_id: int, to_step: int, user_id: int) -> int | None:
@@ -17,7 +18,7 @@ async def advance(db: AsyncSession, session_id: int, to_step: int, user_id: int)
             Session.id == session_id,
             Session.user_id == user_id,
             Session.ended_at.is_not(None),
-            Session.status.in_(_SETTLEABLE_STATUSES),
+            Session.status.in_(SETTLEABLE_STATUSES),
         )
     )
     if session is None:
@@ -32,7 +33,7 @@ async def advance(db: AsyncSession, session_id: int, to_step: int, user_id: int)
             Session.id == session_id,
             Session.user_id == user_id,
             Session.ended_at.is_not(None),
-            Session.status.in_(_SETTLEABLE_STATUSES),
+            Session.status.in_(SETTLEABLE_STATUSES),
             Session.settle_step < to_step,
         )
         .values(**values)

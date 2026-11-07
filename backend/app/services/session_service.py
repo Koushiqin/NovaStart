@@ -1,12 +1,13 @@
 from datetime import timedelta
 
-from sqlalchemy import select
+from sqlalchemy import Date, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.clock import Clock
+from app.clock import Clock, SHANGHAI_TZ
 from app.config import settings
 from app.models.day_task import DayTask
 from app.models.session import Session
+from app.services.settle_service import SETTLEABLE_STATUSES
 
 # 进行中会话：5 分钟里程碑会把 active 置为 completed，但计时仍在继续（ended_at 为空）
 ONGOING_STATUSES = ("active", "completed")
@@ -128,3 +129,39 @@ async def end_session(
     session.ended_at = session.started_at + timedelta(seconds=duration)
     await db.commit()
     return "settled", duration
+
+
+async def get_settlement_summary(
+    db: AsyncSession, session_id: int, user_id: int
+) -> tuple[Session, DayTask, int] | None:
+    """结算页数据源：本场有效会话、任务文案与归属日累计时长。
+
+    可访问条件：本人、已结束（ended_at 非空）、status ∈ {completed, settled}；
+    其余情况返回 None（router 统一映射 404，不区分原因）。
+    归属日按 started_at 的 Asia/Shanghai 日期，禁止裸 cast(started_at, Date)。
+    """
+    session = await db.scalar(
+        select(Session).where(
+            Session.id == session_id,
+            Session.user_id == user_id,
+            Session.ended_at.is_not(None),
+            Session.status.in_(SETTLEABLE_STATUSES),
+        )
+    )
+    if session is None:
+        return None
+
+    task = await db.scalar(select(DayTask).where(DayTask.id == session.task_id))
+    if task is None:
+        return None
+
+    attribution_day = session.started_at.astimezone(SHANGHAI_TZ).date()
+    today_total = await db.scalar(
+        select(func.sum(Session.duration_sec)).where(
+            Session.user_id == user_id,
+            Session.status.in_(SETTLEABLE_STATUSES),
+            Session.ended_at.is_not(None),
+            cast(func.timezone("Asia/Shanghai", Session.started_at), Date) == attribution_day,
+        )
+    )
+    return session, task, int(today_total or 0)

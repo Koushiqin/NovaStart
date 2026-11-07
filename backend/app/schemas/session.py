@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class SessionCreate(BaseModel):
@@ -38,3 +38,35 @@ class CurrentSession(BaseModel):
     server_time: str
     # 最长时长（秒）：专注页据此在封顶时刻立即补一次懒标记，不必等 15s 轮询
     session_max_seconds: int
+
+
+class SessionSummary(BaseModel):
+    """结算页唯一数据源：本次时长 + 归属日累计 + starter 原话复述。"""
+
+    duration_sec: int
+    today_total_sec: int
+    task_text: str
+    starter_text: str
+    settle_step: int
+    status: str
+    # P6 填真实收信数；P5 填 star_level / streak。当前占位值不得改名。
+    received_during_session: int = 0
+    star_level: int | None = None
+    streak: int | None = None
+    server_time: str
+
+
+class ReflectionCreate(BaseModel):
+    """感想请求：允许空串/纯空格（空白 = 跳过，不落库）。"""
+
+    content: str = Field(max_length=200)
+
+
+class ReflectionContent(BaseModel):
+    content: str
+
+
+class ReflectionSaved(BaseModel):
+    reflection: ReflectionContent | None
+    settle_step: int
+    server_time: str

@@ -7,12 +7,16 @@ from app.db import get_session
 from app.deps import get_current_user_id
 from app.schemas.session import (
     CurrentSession,
+    ReflectionContent,
+    ReflectionCreate,
+    ReflectionSaved,
     SessionCreate,
     SessionCreated,
     SessionEnded,
     SessionInfo,
+    SessionSummary,
 )
-from app.services import session_service
+from app.services import reflection_service, session_service
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 
@@ -91,4 +95,58 @@ async def current_session(
         session=info,
         server_time=clock.now().isoformat(),
         session_max_seconds=settings.session_max_seconds,
+    )
+
+
+@router.get("/{session_id}/summary", response_model=SessionSummary)
+async def session_summary(
+    session_id: int,
+    user_id: int = Depends(get_current_user_id),
+    clock: Clock = Depends(get_clock),
+    db: AsyncSession = Depends(get_session),
+) -> SessionSummary:
+    """结算页数据源：本次时长、归属日累计与 starter 原话复述。"""
+    summary = await session_service.get_settlement_summary(db, session_id, user_id)
+    if summary is None:
+        raise HTTPException(
+            status_code=404, detail={"code": "SESSION_NOT_FOUND", "message": "会话不存在"}
+        )
+    session, task, today_total_sec = summary
+    return SessionSummary(
+        duration_sec=session.duration_sec,
+        today_total_sec=today_total_sec,
+        task_text=task.raw_text,
+        starter_text=task.starter_step,
+        settle_step=session.settle_step,
+        status=session.status,
+        server_time=clock.now().isoformat(),
+    )
+
+
+@router.post("/{session_id}/reflection", response_model=ReflectionSaved, status_code=201)
+async def save_reflection(
+    session_id: int,
+    body: ReflectionCreate,
+    user_id: int = Depends(get_current_user_id),
+    clock: Clock = Depends(get_clock),
+    db: AsyncSession = Depends(get_session),
+) -> ReflectionSaved:
+    """第①步感想：一次性写入；空白 = 跳过不落库，二者都推进 settle_step 到 1。"""
+    try:
+        reflection = await reflection_service.save(
+            db, session_id, user_id, body.content, clock
+        )
+    except reflection_service.SessionNotFound:
+        raise HTTPException(
+            status_code=404, detail={"code": "SESSION_NOT_FOUND", "message": "会话不存在"}
+        )
+    except reflection_service.ReflectionLocked:
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "REFLECTION_LOCKED", "message": "感想已提交或已跳过"},
+        )
+    return ReflectionSaved(
+        reflection=ReflectionContent(content=reflection.content) if reflection else None,
+        settle_step=1,
+        server_time=clock.now().isoformat(),
     )
