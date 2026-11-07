@@ -162,7 +162,34 @@ cd frontend; npm run lint; npm run build
 
 ## 8. 执行结果、未验证项和遗留问题
 
-（实现完成后回填：跑了哪些命令、结果如何；区分「测试已编写」与「测试已运行通过」；未验证项与遗留问题。）
+### 8.1 已运行通过
+
+| 项目 | 命令 | 结果 |
+|---|---|---|
+| 后端全量测试（含 `test_task_api.py`、既有回归、架构棘轮） | `cd backend; .venv\Scripts\python.exe -m pytest -q` | 86 passed |
+| 前端 lint | `cd frontend; npm run lint` | 0 error + `button.tsx` 1 既有 warning |
+| 前端构建 | `cd frontend; npm run build` | `tsc -b` + vite build 通过 |
+
+浏览器端到端（前端 dev 5173 + 后端 8000 + 本地 PostgreSQL 实库，`/dev/reset-seed` 后）：
+
+1. 小明：输入「背 20 个单词」→ 点「分析」→ 出现第一步与后续步骤；点「开始学习」跳转 `/focus` — 通过（接口日志 `POST /api/tasks 201` → `POST /api/tasks/{id}/analyze 200` → `POST /api/sessions 200`）。
+2. 小美：分析后把标题改为「复习三角函数-改」但不点分析 → 出现「标题已修改，可重新分析」 — 通过。
+3. 编辑第一步为「先看公式 5 分钟」并失焦 → `PATCH /api/tasks/128 200` → 刷新后仍显示新值 — 通过（后端日志与浏览器网络请求双方佐证）。
+4. 降级：后端以 `LLM_PROVIDER=openai`、`LLM_API_KEY=dummy`、`LLM_BASE_URL=http://127.0.0.1:9/v1` 启动（`.env` 未改，仅进程环境变量）→ analyze 返回 `source="fallback"` + 模板 starter/steps；首页显示「智能拆分暂不可用，先用通用路线」，点「开始学习」仍可跳 `/focus` — 通过（验收条件 13）。
+
+### 8.2 验证中发现并修复的问题
+
+- 「分析后改标题 → 提示可重新分析」原先只依赖服务端 `split_stale`，但标题仅在点「分析」时 PATCH，未点分析时服务端仍是旧标题，提示永远不出现（验收条件 8 前端侧缺口）。已在 `SplitEditor` 增加 `titleChanged`（比较本地输入与 `task.raw_text`）与 `split_stale` 任一成立即提示，浏览器复验通过。
+- 浏览器自动化对受控文本输入执行键盘输入会报失焦错误，编辑保存最终以「原生 value setter + input + focusout」事件链路验证（与真实输入等价，React `onBlur` 监听 `focusout`）；已观察到 PATCH 200 与刷新持久化。
+
+### 8.3 未验证项与遗留问题
+
+- Docker Compose 交付链未复跑（未改镜像 / 启动方式）。
+- 降级演示只验证了「连接不可用地址」的即时失败路径；8 秒超时路径由 `test_analyze_fallback_on_splitter_error` 与 `OpenAICompatSplitter` 既有实现覆盖，未手工制造慢响应。
+- 前端自动化无法完成真实键盘输入（见 8.2），建议人工复验一次编辑保存；不影响接口与持久化结论。
+- 首次访问不自动选账号，需在右上角点选（依据 Spec 001 §8.3，本计划未引入默认身份）。
+- `locked` 时「开始学习」改为「进入专注」直接跳转，避免重复 session；此时 store 的 `currentSessionId` 可能为空或旧值，P3 专注页应以 `GET /api/sessions/current` 为准。
+- LRU 缓存仅单进程有效，仍禁止多 worker 启动（沿用 Global Constraints）。
 
 ---
 
