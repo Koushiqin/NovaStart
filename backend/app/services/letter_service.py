@@ -104,7 +104,7 @@ async def send(
     if already is not None:
         return "already_sent", None
 
-    # 行锁锁住收件人全部已投递且未处理的信，并发投递时串行化计数
+    # 行锁锁住收件人全部已投递且未处理、未过期的信，并发投递时串行化计数
     unhandled = (
         await db.execute(
             select(Letter.id)
@@ -112,6 +112,7 @@ async def send(
                 Letter.user_id == recipient.id,
                 Letter.status == "delivered",
                 Letter.handled == False,  # noqa: E712
+                Letter.expired_at > clock.now(),
             )
             .with_for_update()
         )

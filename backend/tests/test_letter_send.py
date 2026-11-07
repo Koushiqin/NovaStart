@@ -663,3 +663,25 @@ async def test_unhandled_expiry_crosses_midnight(client, db_session, fixed_clock
     assert favorite.json()["detail"]["code"] == "LETTER_EXPIRED"
     assert dismiss.status_code == 409
     assert dismiss.json()["detail"]["code"] == "LETTER_EXPIRED"
+
+
+async def test_expired_unhandled_letters_do_not_block_capacity(
+    client, db_session, fixed_clock
+):
+    sender = await _make_user(db_session, "小明")
+    recipient = await _make_user(db_session, "小美")
+    sid, _ = await _seed_session(db_session, sender.id)
+    for i in range(3):
+        await _insert_letter(
+            db_session,
+            recipient.id,
+            content=f"过期信 {i}",
+            # == fixed_clock.now()，已过期
+            expired_at=datetime(2026, 11, 7, 12, 0, tzinfo=SHANGHAI_TZ),
+        )
+
+    resp = await _send(client, sender.id, sid, "小美")
+
+    assert resp.status_code == 200
+    assert resp.json()["result"] == "delivered"
+
