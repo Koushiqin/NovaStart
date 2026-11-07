@@ -27,10 +27,12 @@ function minutes(seconds: number): number {
   return Math.floor(seconds / 60)
 }
 
-// 归属日 ISO（YYYY-MM-DD）→ 「M月D日」：跨零点结算时标签必须显示归属日，不能写「今天/当日」
-function dayLabel(iso: string): string {
-  const [, month, day] = iso.split("-")
-  return `${Number(month)}月${Number(day)}日`
+// 归属日 ISO（YYYY-MM-DD）→ 「M月D日」：跨零点结算时标签必须显示归属日，不能写「今天/当日」；
+// 字段缺失或格式异常（如前后端版本不一致）时退回「当日」，不让结算摘要整页崩掉
+function dayLabel(iso: string | undefined): string {
+  const match = /^\d{4}-(\d{2})-(\d{2})$/.exec(iso ?? "")
+  if (!match) return "当日"
+  return `${Number(match[1])}月${Number(match[2])}日`
 }
 
 // 三段式摘要：具体成果（本次时长 + 归属日累计）、starter 原话复述，
