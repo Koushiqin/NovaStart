@@ -1,13 +1,17 @@
 from datetime import datetime, time, timedelta
 
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.clock import SHANGHAI_TZ, Clock
 from app.models import ActionLog, DayTask, Letter, Reflection, Session, User
 
-# 按外键依赖倒序清表
-_CLEAR_ORDER = [ActionLog, Letter, Reflection, Session, DayTask, User]
+# 按外键依赖倒序清表；users 单独处理：三个固定演示账号保留原 id，
+# 因为前端把 userId 持久化在 localStorage，id 漂移会让刷新后的选中账号失效。
+_CLEAR_ORDER = [ActionLog, Letter, Reflection, Session, DayTask]
+
+# 三个固定演示账号
+_DEMO_NAMES = ("小明", "小美", "小刚")
 
 # 小明 6 天历史用到的任务主题
 _DEMO_TOPICS = [
@@ -60,19 +64,27 @@ async def reset_seed(session: AsyncSession) -> list[User]:
     """清库并插入演示数据：3 个固定演示账号。
 
     小明 = 连续 6 天历史；小美 = 1 条历史；小刚 = 空（用于演示全新账号）。
-    幂等：先全量 delete 再插入，重复调用结果计数一致。
-    日期按「服务端当天 - n 天」动态生成，保证任何一天演示都是近 6 天。
+    幂等：清空业务数据后按名字复用既有演示账号（id 不漂移），缺失才新建；
+    重复调用结果计数一致。日期按「服务端当天 - n 天」动态生成，保证任何一天演示都是近 6 天。
     信件预置属 P6，本计划不写入信件。
     """
     for model in _CLEAR_ORDER:
         await session.execute(delete(model))
 
+    # 非演示账号一律删除；已有演示账号复用（重复 reset 不改变 id）
+    await session.execute(delete(User).where(User.name.not_in(_DEMO_NAMES)))
+    existing = {u.name: u for u in (await session.execute(select(User))).scalars()}
+    users: list[User] = []
+    for name in _DEMO_NAMES:
+        user = existing.get(name)
+        if user is None:
+            user = User(name=name)
+            session.add(user)
+        users.append(user)
+    await session.flush()  # 新建账号拿到自增 id
+
     today = Clock().today()
-    xiaoming = User(name="小明")
-    xiaomei = User(name="小美")
-    xiaogang = User(name="小刚")
-    session.add_all([xiaoming, xiaomei, xiaogang])
-    await session.flush()  # 拿到自增 id
+    xiaoming, xiaomei, xiaogang = users
 
     for n in range(1, 7):
         day = today - timedelta(days=n)

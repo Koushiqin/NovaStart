@@ -83,6 +83,19 @@ async def test_users_endpoint_returns_seed_accounts(client: AsyncClient) -> None
     assert data["server_time"]
 
 
+async def test_reset_seed_keeps_demo_user_ids(client: AsyncClient) -> None:
+    """重复 reset-seed 不得改变三个固定演示账号的 id。
+
+    前端把 userId 持久化到 localStorage，若 reset 后 id 漂移，
+    刷新页面时已选账号会匹配不到任何按钮（验收条件 4 失败）。
+    """
+    first = (await client.post("/dev/reset-seed")).json()["users"]
+    assert [u["name"] for u in first] == ["小明", "小美", "小刚"]
+
+    second = (await client.post("/dev/reset-seed")).json()["users"]
+    assert [u["id"] for u in second] == [u["id"] for u in first]
+
+
 async def test_task_owner_comes_from_header(client: AsyncClient, db_session: AsyncSession) -> None:
     """两个账号各建任务：落库的 user_id 来自请求头，查询各自只见自己的数据。"""
     user_a = await _make_user(db_session, "账号甲")

@@ -32,10 +32,11 @@ export default function SmokePanel() {
     setLoading(true)
     setError(null)
     try {
-      // 重置种子数据，取第一个演示用户
-      const seed = await axios.post<ResetSeedResponse>("/dev/reset-seed")
-      const userId = seed.data.users[0].id
-      setUserId(userId)
+      // 已选账号时按当前账号建任务；未选账号时重置种子并选第一个演示账号
+      if (useAppStore.getState().userId == null) {
+        const seed = await axios.post<ResetSeedResponse>("/dev/reset-seed")
+        setUserId(seed.data.users[0].id)
+      }
       // 依次调 POST /tasks + POST /sessions（垂直切片），身份经请求头自动注入
       const task = await apiClient.post("/tasks", { raw_text: "读完产品文档第 3 章" })
       setStarterStep(task.data.starter_step)
