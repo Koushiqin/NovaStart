@@ -155,7 +155,9 @@ async def send(
         await db.refresh(letter)
         return "rejected_full", letter.id
 
-    db.add(ActionLog(session_id=session_id, action_type="deliver"))
+    # 专注标签查询必须在 db.add 之前完成：autoflush 会提前把幂等键写库，
+    # IntegrityError 需落在下面的 try/except 内才能返回 already_sent。
+    focused_delivery = await _recipient_is_focused(db, recipient.id)
     letter = Letter(
         user_id=recipient.id,
         sender_id=sender_id,
@@ -163,9 +165,10 @@ async def send(
         content=text,
         status="delivered",
         handled=False,
-        focused_delivery=await _recipient_is_focused(db, recipient.id),
+        focused_delivery=focused_delivery,
         expired_at=_expiry(clock),
     )
+    db.add(ActionLog(session_id=session_id, action_type="deliver"))
     db.add(letter)
     try:
         await db.commit()
