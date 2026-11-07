@@ -2,6 +2,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.schemas.progress import StreakInfo
+
 
 class SessionCreate(BaseModel):
     task_id: int
@@ -49,10 +51,10 @@ class SessionSummary(BaseModel):
     starter_text: str
     settle_step: int
     status: str
-    # P6 填真实收信数；P5 填 star_level / streak。当前占位值不得改名。
+    # P6 填真实收信数；P5 填 star_level / streak（与 /api/progress/summary 同源）。
     received_during_session: int = 0
     star_level: int | None = None
-    streak: int | None = None
+    streak: StreakInfo | None = None
     server_time: str
 
 

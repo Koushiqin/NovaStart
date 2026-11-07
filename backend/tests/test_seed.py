@@ -1,12 +1,14 @@
 from datetime import timedelta
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.clock import Clock
 from app.db import Base
 from app.models.day_task import DayTask
+from app.models.star import Star
+from app.models.streak import Streak
 from app.seed import reset_seed
 
 TEST_DATABASE_URL = "postgresql+psycopg://postgres@127.0.0.1:5432/novastart_test"
@@ -34,3 +36,43 @@ async def test_reset_seed_uses_injected_today(db_session: AsyncSession):
         await db_session.scalars(select(DayTask.date).where(DayTask.user_id == users[0].id))
     ).all()
     assert max(days) == offset.today() - timedelta(days=1)
+
+
+async def test_reset_seed_generates_stars_and_streak(db_session: AsyncSession):
+    """验收 12：星星与连续天数由真实 recompute 路径产生（不手写行）。"""
+    offset = Clock(offset_seconds=-86400)
+    xiaoming, xiaomei, xiaogang = await reset_seed(db_session, offset)
+    today = offset.today()
+
+    stars = (
+        await db_session.scalars(select(Star).where(Star.user_id == xiaoming.id))
+    ).all()
+    assert len(stars) == 6
+    assert {star.date for star in stars} == {
+        today - timedelta(days=n) for n in range(1, 7)
+    }
+    assert all(star.level == 1 and star.minutes == 5 for star in stars)
+
+    streak = await db_session.scalar(
+        select(Streak).where(Streak.user_id == xiaoming.id)
+    )
+    assert streak.current == 6
+    assert streak.longest == 6
+    assert streak.last_completed_date == today - timedelta(days=1)
+    assert streak.was_reset is False
+
+    xiaomei_stars = (
+        await db_session.scalars(select(Star).where(Star.user_id == xiaomei.id))
+    ).all()
+    xiaomei_streak = await db_session.scalar(
+        select(Streak).where(Streak.user_id == xiaomei.id)
+    )
+    assert len(xiaomei_stars) == 1
+    assert xiaomei_streak.current == 1
+
+    assert (
+        await db_session.scalar(select(func.count()).select_from(Star).where(Star.user_id == xiaogang.id))
+    ) == 0
+    assert (
+        await db_session.scalar(select(Streak).where(Streak.user_id == xiaogang.id))
+    ) is None

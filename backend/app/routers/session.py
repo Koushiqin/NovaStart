@@ -5,6 +5,7 @@ from app.clock import Clock, get_clock
 from app.config import settings
 from app.db import get_session
 from app.deps import get_current_user_id
+from app.schemas.progress import StreakInfo
 from app.schemas.session import (
     CurrentSession,
     ReflectionContent,
@@ -105,13 +106,13 @@ async def session_summary(
     clock: Clock = Depends(get_clock),
     db: AsyncSession = Depends(get_session),
 ) -> SessionSummary:
-    """结算页数据源：本次时长、归属日累计与 starter 原话复述。"""
-    summary = await session_service.get_settlement_summary(db, session_id, user_id)
+    """结算页数据源：本次时长、归属日累计、starter 原话复述与星星/连续天数。"""
+    summary = await session_service.get_settlement_summary(db, session_id, user_id, clock)
     if summary is None:
         raise HTTPException(
             status_code=404, detail={"code": "SESSION_NOT_FOUND", "message": "会话不存在"}
         )
-    session, task, today_total_sec = summary
+    session, task, today_total_sec, star_level, streak = summary
     return SessionSummary(
         duration_sec=session.duration_sec,
         today_total_sec=today_total_sec,
@@ -119,6 +120,10 @@ async def session_summary(
         starter_text=task.starter_step,
         settle_step=session.settle_step,
         status=session.status,
+        star_level=star_level,
+        streak=StreakInfo(current=streak[0], longest=streak[1], was_reset=streak[2])
+        if streak
+        else None,
         server_time=clock.now().isoformat(),
     )
 

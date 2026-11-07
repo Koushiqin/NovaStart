@@ -4,11 +4,21 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.clock import SHANGHAI_TZ, Clock
-from app.models import ActionLog, DayTask, Letter, Reflection, Session, User
+from app.models import (
+    ActionLog,
+    DayTask,
+    Letter,
+    Reflection,
+    Session,
+    Star,
+    Streak,
+    User,
+)
+from app.services import progress_service
 
 # 按外键依赖倒序清表；users 单独处理：三个固定演示账号保留原 id，
 # 因为前端把 userId 持久化在 localStorage，id 漂移会让刷新后的选中账号失效。
-_CLEAR_ORDER = [ActionLog, Letter, Reflection, Session, DayTask]
+_CLEAR_ORDER = [ActionLog, Letter, Reflection, Session, Star, Streak, DayTask]
 
 # 三个固定演示账号
 _DEMO_NAMES = ("小明", "小美", "小刚")
@@ -103,6 +113,13 @@ async def reset_seed(session: AsyncSession, clock: Clock) -> list[User]:
         "整理英语单词 20 个",
         "小美的历史回顾：从一个小目标开始。",
     )
+
+    # 星星与连续天数走与线上相同的 recompute 写入路径（逐日升序），不手写 star/streak 行
+    await session.flush()
+    for user in users:
+        for day in await progress_service.attribution_days(session, user.id):
+            await progress_service.recompute_day(session, user.id, day)
+            await progress_service.mark_day_completed(session, user.id, day)
 
     await session.commit()
     return [xiaoming, xiaomei, xiaogang]

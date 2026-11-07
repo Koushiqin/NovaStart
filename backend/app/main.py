@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.clock import Clock, get_clock
 from app.db import engine, get_session
 from app.routers import letter as letter_router
+from app.routers import progress as progress_router
 from app.routers import session as session_router
 from app.routers import settle as settle_router
 from app.routers import task as task_router
@@ -19,6 +20,7 @@ app.include_router(task_router.router)
 app.include_router(session_router.router)
 app.include_router(letter_router.router)
 app.include_router(settle_router.router)
+app.include_router(progress_router.router)
 
 app.add_middleware(
     CORSMiddleware,

@@ -3,6 +3,8 @@ from app.models.day_task import DayTask
 from app.models.letter import Letter
 from app.models.reflection import Reflection
 from app.models.session import Session
+from app.models.star import Star
+from app.models.streak import Streak
 from app.models.user import User
 
 __all__ = [
@@ -12,4 +14,6 @@ __all__ = [
     "Letter",
     "Reflection",
     "ActionLog",
+    "Star",
+    "Streak",
 ]

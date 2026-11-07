@@ -7,6 +7,8 @@ from app.clock import Clock, SHANGHAI_TZ
 from app.config import settings
 from app.models.day_task import DayTask
 from app.models.session import Session
+from app.models.star import Star
+from app.services import progress_service
 from app.services.settle_service import SETTLEABLE_STATUSES
 
 # 进行中会话：5 分钟里程碑会把 active 置为 completed，但计时仍在继续（ended_at 为空）
@@ -73,14 +75,20 @@ async def get_current_session(
 
     now = clock.now()
     elapsed = max(0, int((now - session.started_at).total_seconds()))
+    day = session.started_at.astimezone(SHANGHAI_TZ).date()
 
     if session.ended_at is None and elapsed >= settings.session_max_seconds:
         session.status = "completed"
         session.ended_at = session.started_at + timedelta(seconds=settings.session_max_seconds)
         session.duration_sec = settings.session_max_seconds
+        await progress_service.mark_day_completed(db, user_id, day)
+        await progress_service.recompute_day(db, user_id, day)
         await db.commit()
     elif session.status == "active" and elapsed >= settings.session_min_seconds:
         session.status = "completed"
+        # 满 5 分钟先记连续天数；星星等有效结束/封顶后按有效时长补算（同一事务）
+        await progress_service.mark_day_completed(db, user_id, day)
+        await progress_service.recompute_day(db, user_id, day)
         await db.commit()
 
     starter_step = await db.scalar(
@@ -127,18 +135,23 @@ async def end_session(
     session.status = "completed"
     session.duration_sec = duration
     session.ended_at = session.started_at + timedelta(seconds=duration)
+    day = session.started_at.astimezone(SHANGHAI_TZ).date()
+    await progress_service.mark_day_completed(db, user_id, day)
+    await progress_service.recompute_day(db, user_id, day)
     await db.commit()
     return "settled", duration
 
 
 async def get_settlement_summary(
-    db: AsyncSession, session_id: int, user_id: int
-) -> tuple[Session, DayTask, int] | None:
-    """结算页数据源：本场有效会话、任务文案与归属日累计时长。
+    db: AsyncSession, session_id: int, user_id: int, clock: Clock
+) -> tuple[Session, DayTask, int, int | None, tuple[int, int, bool] | None] | None:
+    """结算页数据源：本场有效会话、任务文案、归属日累计时长、本场星星与连续天数。
 
     可访问条件：本人、已结束（ended_at 非空）、status ∈ {completed, settled}；
     其余情况返回 None（router 统一映射 404，不区分原因）。
     归属日按 started_at 的 Asia/Shanghai 日期，禁止裸 cast(started_at, Date)。
+    star_level = 归属日 stars 等级（该日无星为 None）；
+    streak = 当前账号读侧快照（无任何完成记录为 None）。
     """
     session = await db.scalar(
         select(Session).where(
@@ -164,4 +177,8 @@ async def get_settlement_summary(
             cast(func.timezone("Asia/Shanghai", Session.started_at), Date) == attribution_day,
         )
     )
-    return session, task, int(today_total or 0)
+    star = await db.scalar(
+        select(Star).where(Star.user_id == user_id, Star.date == attribution_day)
+    )
+    streak = await progress_service.streak_view(db, user_id, clock.today())
+    return session, task, int(today_total or 0), star.level if star else None, streak
