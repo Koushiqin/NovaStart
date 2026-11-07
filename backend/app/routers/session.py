@@ -112,7 +112,7 @@ async def session_summary(
         raise HTTPException(
             status_code=404, detail={"code": "SESSION_NOT_FOUND", "message": "会话不存在"}
         )
-    session, task, today_total_sec, star_level, streak = summary
+    session, task, today_total_sec, star_level, streak, received = summary
     return SessionSummary(
         duration_sec=session.duration_sec,
         today_total_sec=today_total_sec,
@@ -120,6 +120,7 @@ async def session_summary(
         starter_text=task.starter_step,
         settle_step=session.settle_step,
         status=session.status,
+        received_during_session=received,
         star_level=star_level,
         streak=StreakInfo(current=streak[0], longest=streak[1], was_reset=streak[2])
         if streak

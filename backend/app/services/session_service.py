@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.clock import Clock, SHANGHAI_TZ
 from app.config import settings
 from app.models.day_task import DayTask
+from app.models.letter import Letter
 from app.models.session import Session
 from app.models.star import Star
 from app.services import progress_service
@@ -144,14 +145,15 @@ async def end_session(
 
 async def get_settlement_summary(
     db: AsyncSession, session_id: int, user_id: int, clock: Clock
-) -> tuple[Session, DayTask, int, int | None, tuple[int, int, bool] | None] | None:
+) -> tuple[Session, DayTask, int, int | None, tuple[int, int, bool] | None, int] | None:
     """结算页数据源：本场有效会话、任务文案、归属日累计时长、本场星星与连续天数。
 
     可访问条件：本人、已结束（ended_at 非空）、status ∈ {completed, settled}；
     其余情况返回 None（router 统一映射 404，不区分原因）。
     归属日按 started_at 的 Asia/Shanghai 日期，禁止裸 cast(started_at, Date)。
     star_level = 归属日 stars 等级（该日无星为 None）；
-    streak = 当前账号读侧快照（无任何完成记录为 None）。
+    streak = 当前账号读侧快照（无任何完成记录为 None）；
+    received = 本场时间窗 [started_at, ended_at] 内本人收到的已投递信数。
     """
     session = await db.scalar(
         select(Session).where(
@@ -181,4 +183,21 @@ async def get_settlement_summary(
         select(Star).where(Star.user_id == user_id, Star.date == attribution_day)
     )
     streak = await progress_service.streak_view(db, user_id, clock.today())
-    return session, task, int(today_total or 0), star.level if star else None, streak
+    received = await db.scalar(
+        select(func.count())
+        .select_from(Letter)
+        .where(
+            Letter.user_id == user_id,
+            Letter.status == "delivered",
+            Letter.created_at >= session.started_at,
+            Letter.created_at <= session.ended_at,
+        )
+    )
+    return (
+        session,
+        task,
+        int(today_total or 0),
+        star.level if star else None,
+        streak,
+        int(received or 0),
+    )
