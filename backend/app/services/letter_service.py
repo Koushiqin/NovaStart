@@ -84,9 +84,11 @@ async def get_history(db: AsyncSession, user_id: int) -> list[Letter]:
     return letters
 
 
-async def favorite(db: AsyncSession, letter_id: int) -> Letter | None:
-    """收藏信件，幂等：已收藏直接返回原状态，不重复写 ActionLog。"""
-    letter = await db.get(Letter, letter_id)
+async def favorite(db: AsyncSession, letter_id: int, user_id: int) -> Letter | None:
+    """收藏本人信件，幂等：已收藏直接返回原状态，不重复写 ActionLog。"""
+    letter = await db.scalar(
+        select(Letter).where(Letter.id == letter_id, Letter.user_id == user_id)
+    )
     if letter is None:
         return None
     if letter.favorited:

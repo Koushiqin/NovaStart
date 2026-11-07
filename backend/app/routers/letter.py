@@ -41,14 +41,17 @@ async def history(
 @router.post("/{letter_id}/favorite", response_model=FavoriteResponse)
 async def favorite(
     letter_id: int,
-    _user_id: int = Depends(get_current_user_id),
+    user_id: int = Depends(get_current_user_id),
     clock: Clock = Depends(get_clock),
     db: AsyncSession = Depends(get_session),
 ) -> FavoriteResponse:
-    """收藏信件，幂等。"""
-    letter = await letter_service.favorite(db, letter_id)
+    """收藏信件，幂等；只能操作本人信件。"""
+    letter = await letter_service.favorite(db, letter_id, user_id)
     if letter is None:
-        raise HTTPException(status_code=404, detail="letter not found")
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "LETTER_NOT_FOUND", "message": "信件不存在"},
+        )
     return FavoriteResponse(
         letter=LetterOut.model_validate(letter),
         server_time=clock.now().isoformat(),

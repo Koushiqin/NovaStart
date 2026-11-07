@@ -159,6 +159,24 @@ async def test_favorite_is_idempotent(client, db_session):
     assert fav_logs == 1  # 不写重复 ActionLog
 
 
+async def test_favorite_other_users_letter_404(client, db_session):
+    owner_id = await _make_user(db_session)
+    other_id = await _make_user(db_session)
+    sid = await _make_session_row(db_session, owner_id)
+    letter = await letter_service.deliver(db_session, owner_id, sid, "别人的信", Clock())
+    letter_id = letter.id
+
+    resp = await client.post(
+        f"/api/letters/{letter_id}/favorite", headers={"X-User-Id": str(other_id)}
+    )
+
+    assert resp.status_code == 404
+    assert resp.json()["detail"]["code"] == "LETTER_NOT_FOUND"
+    await db_session.rollback()
+    row = await db_session.get(Letter, letter_id)
+    assert row.favorited is False
+
+
 async def test_settle_advance_idempotent_and_monotonic(client, db_session):
     user_id = await _make_user(db_session)
     sid = await _make_session_row(db_session, user_id, status="completed", ended=True)
