@@ -6,6 +6,8 @@ import type { TaskState } from "@/features/task/types"
 interface SplitEditorProps {
   task: TaskState
   saving: boolean
+  /** 本地标题已与已分析版本不同（服务端尚未收到 PATCH） */
+  titleChanged: boolean
   onUpdate: (patch: { starter_step?: string; steps?: string[] }) => void
 }
 
@@ -16,7 +18,7 @@ const INPUT_CLASS = cn(
 )
 
 // 展示与编辑当前采用版 starter / steps；原始版只用于结算复述（P4），此处不显示
-export default function SplitEditor({ task, saving, onUpdate }: SplitEditorProps) {
+export default function SplitEditor({ task, saving, titleChanged, onUpdate }: SplitEditorProps) {
   const [starter, setStarter] = useState(task.starter_step)
   const [steps, setSteps] = useState(task.steps)
 
@@ -60,7 +62,7 @@ export default function SplitEditor({ task, saving, onUpdate }: SplitEditorProps
         </p>
       )}
 
-      {task.split_stale && (
+      {(task.split_stale || titleChanged) && (
         <p className="rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground">
           标题已修改，可重新分析。
         </p>
@@ -77,6 +79,7 @@ export default function SplitEditor({ task, saving, onUpdate }: SplitEditorProps
         </div>
         <input
           value={starter}
+          aria-label="第一步"
           onChange={(event) => setStarter(event.target.value)}
           onBlur={commitStarter}
           disabled={locked}

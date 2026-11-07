@@ -160,7 +160,12 @@ export default function HomePage() {
               />
 
               {task?.analyzed && (
-                <SplitEditor task={task} saving={busy === "save"} onUpdate={handleUpdate} />
+                <SplitEditor
+                  task={task}
+                  saving={busy === "save"}
+                  titleChanged={input.trim() !== task.raw_text}
+                  onUpdate={handleUpdate}
+                />
               )}
 
               <Button
