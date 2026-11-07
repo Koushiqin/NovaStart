@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     llm_base_url: str = "https://api.deepseek.com/v1"
     llm_model: str = "deepseek-chat"
     clock_mode: str = "normal"
+    demo_time_offset_seconds: int = 0
 
 
 settings = Settings()

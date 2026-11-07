@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.clock import Clock
+from app.clock import Clock, get_clock
 from app.db import get_session
 from app.deps import get_current_user_id
 from app.schemas.settle import SettleAdvance, SettleState
@@ -15,6 +15,7 @@ async def advance(
     session_id: int,
     body: SettleAdvance,
     _user_id: int = Depends(get_current_user_id),
+    clock: Clock = Depends(get_clock),
     db: AsyncSession = Depends(get_session),
 ) -> SettleState:
     """推进结算步骤（1..4），带条件更新天然幂等，只进不退。"""
@@ -24,5 +25,5 @@ async def advance(
     return SettleState(
         session_id=session_id,
         settle_step=step,
-        server_time=Clock().now().isoformat(),
+        server_time=clock.now().isoformat(),
     )

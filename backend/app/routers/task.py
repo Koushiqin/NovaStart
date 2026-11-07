@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.clock import Clock
+from app.clock import Clock, get_clock
 from app.config import settings
 from app.db import get_session
 from app.deps import get_current_user_id
@@ -16,10 +16,10 @@ router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 async def create_task(
     body: TaskCreate,
     user_id: int = Depends(get_current_user_id),
+    clock: Clock = Depends(get_clock),
     db: AsyncSession = Depends(get_session),
 ) -> TaskCreated:
     """创建当天任务：调 splitter 拆步后落库，返回拆分结果与服务器时间。"""
-    clock = Clock()
     split = await get_splitter(settings).split(body.raw_text, clock.today().isoformat())
 
     task = DayTask(
