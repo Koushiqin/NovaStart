@@ -36,10 +36,10 @@ export default function SmokePanel() {
       const seed = await axios.post<ResetSeedResponse>("/dev/reset-seed")
       const userId = seed.data.users[0].id
       setUserId(userId)
-      // 依次调 POST /tasks + POST /sessions（垂直切片）
-      const task = await apiClient.post("/tasks", { user_id: userId, raw_text: "读完产品文档第 3 章" })
+      // 依次调 POST /tasks + POST /sessions（垂直切片），身份经请求头自动注入
+      const task = await apiClient.post("/tasks", { raw_text: "读完产品文档第 3 章" })
       setStarterStep(task.data.starter_step)
-      const session = await apiClient.post("/sessions", { user_id: userId, task_id: task.data.task_id })
+      const session = await apiClient.post("/sessions", { task_id: task.data.task_id })
       setStartedAt(new Date(session.data.started_at))
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
