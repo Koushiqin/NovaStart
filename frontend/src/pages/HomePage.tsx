@@ -8,6 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import TaskComposer from "@/features/task/TaskComposer"
 import SplitEditor from "@/features/task/SplitEditor"
 import type { AnalyzeResult, TaskResponse, TodayResponse } from "@/features/task/types"
+import StarWall, { type ProgressSummaryData } from "@/features/progress/StarWall"
+import StreakBadge from "@/features/progress/StreakBadge"
 
 interface CurrentSessionResponse {
   session: { id: number; ended_at: string | null } | null
@@ -34,6 +36,7 @@ export default function HomePage() {
   const navigate = useNavigate()
 
   const [today, setToday] = useState<TodayResponse | null>(null)
+  const [progress, setProgress] = useState<ProgressSummaryData | null>(null)
   const [input, setInput] = useState("")
   const [busy, setBusy] = useState<"analyze" | "save" | "start" | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -41,6 +44,7 @@ export default function HomePage() {
   // 切换账号即清空上一账号的任务、输入与在途状态，再按新身份拉取今日任务
   useEffect(() => {
     setToday(null)
+    setProgress(null)
     setInput("")
     setBusy(null)
     setError(null)
@@ -56,6 +60,15 @@ export default function HomePage() {
       })
       .catch((e) => {
         if (!cancelled) setError(errorMessage(e))
+      })
+    // 进度区失败不阻塞今日任务：仅隐藏进度卡片
+    apiClient
+      .get<ProgressSummaryData>("/progress/summary")
+      .then((res) => {
+        if (!cancelled) setProgress(res.data)
+      })
+      .catch(() => {
+        if (!cancelled) setProgress(null)
       })
     return () => {
       cancelled = true
@@ -151,50 +164,60 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-background flex items-start justify-center p-6">
-      <Card className="w-full max-w-xl">
-        <CardHeader>
-          <CardTitle>今日任务</CardTitle>
-          <CardDescription>输入一句话，点「分析」得到五分钟的起步动作与后续路线。</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {userId == null ? (
-            <p className="rounded-md border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
-              请先在右上角选择一个演示账号。
-            </p>
-          ) : (
-            <>
-              <TaskComposer
-                value={input}
-                onChange={setInput}
-                onAnalyze={handleAnalyze}
-                analyzing={busy === "analyze"}
-                disabled={locked || busy === "analyze"}
-                carryOver={today?.carry_over ?? null}
-                onContinueYesterday={() => setInput(today?.carry_over?.raw_text ?? "")}
-              />
-
-              {task?.analyzed && (
-                <SplitEditor
-                  task={task}
-                  saving={busy === "save"}
-                  titleChanged={input.trim().length > 0 && input.trim() !== task.raw_text}
-                  onUpdate={handleUpdate}
+      <div className="w-full max-w-xl space-y-4">
+        {userId != null && progress !== null && (
+          <Card>
+            <CardContent className="space-y-4 p-5">
+              <StreakBadge current={progress.streak.current} longest={progress.streak.longest} />
+              <StarWall wall={progress.wall} />
+            </CardContent>
+          </Card>
+        )}
+        <Card className="w-full">
+          <CardHeader>
+            <CardTitle>今日任务</CardTitle>
+            <CardDescription>输入一句话，点「分析」得到五分钟的起步动作与后续路线。</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {userId == null ? (
+              <p className="rounded-md border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
+                请先在右上角选择一个演示账号。
+              </p>
+            ) : (
+              <>
+                <TaskComposer
+                  value={input}
+                  onChange={setInput}
+                  onAnalyze={handleAnalyze}
+                  analyzing={busy === "analyze"}
+                  disabled={locked || busy === "analyze"}
+                  carryOver={today?.carry_over ?? null}
+                  onContinueYesterday={() => setInput(today?.carry_over?.raw_text ?? "")}
                 />
-              )}
 
-              <Button
-                className="w-full"
-                onClick={handleStart}
-                disabled={!task?.analyzed || busy !== null}
-              >
-                {busy === "start" ? "进入中…" : locked ? "继续" : "开始学习"}
-              </Button>
-            </>
-          )}
+                {task?.analyzed && (
+                  <SplitEditor
+                    task={task}
+                    saving={busy === "save"}
+                    titleChanged={input.trim().length > 0 && input.trim() !== task.raw_text}
+                    onUpdate={handleUpdate}
+                  />
+                )}
 
-          {error && <p className="text-sm text-destructive">请求失败：{error}</p>}
-        </CardContent>
-      </Card>
+                <Button
+                  className="w-full"
+                  onClick={handleStart}
+                  disabled={!task?.analyzed || busy !== null}
+                >
+                  {busy === "start" ? "进入中…" : locked ? "继续" : "开始学习"}
+                </Button>
+              </>
+            )}
+
+            {error && <p className="text-sm text-destructive">请求失败：{error}</p>}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

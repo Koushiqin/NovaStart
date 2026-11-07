@@ -1,4 +1,12 @@
+import { motion } from "framer-motion"
 import { Card, CardContent } from "@/components/ui/card"
+import { StarIcon } from "@/features/progress/StarWall"
+
+export interface StreakInfo {
+  current: number
+  longest: number
+  was_reset: boolean
+}
 
 // 与 backend/app/schemas/session.py 的 SessionSummary 对应（结算页唯一数据源）
 export interface SettleSummaryData {
@@ -10,7 +18,7 @@ export interface SettleSummaryData {
   status: string
   received_during_session: number
   star_level: number | null
-  streak: number | null
+  streak: StreakInfo | null
   server_time: string
 }
 
@@ -18,8 +26,8 @@ function minutes(seconds: number): number {
   return Math.floor(seconds / 60)
 }
 
-// 三段式摘要：具体成果（本次时长 + 今天累计）与 starter 原话复述；
-// star_level / streak 槽位由 P5 填充，无值时不伪造数字或文案。
+// 三段式摘要：具体成果（本次时长 + 今天累计）、starter 原话复述，
+// 以及 P5 填入的星星点亮动画与连续天数；无值时不伪造数字或文案。
 export default function SettleSummary({ data }: { data: SettleSummaryData }) {
   return (
     <Card>
@@ -37,11 +45,28 @@ export default function SettleSummary({ data }: { data: SettleSummaryData }) {
           <p className="text-lg font-medium leading-relaxed">「{data.starter_text}」</p>
         </div>
 
-        {/* P5 替换点：星星亮度 / 连续天数槽位 */}
-        {(data.star_level !== null || data.streak !== null) && (
-          <div className="flex justify-center gap-6 text-sm text-muted-foreground">
-            {data.star_level !== null && <span>星星 {data.star_level}</span>}
-            {data.streak !== null && <span>连续 {data.streak} 天</span>}
+        {data.star_level !== null && (
+          <motion.div
+            className="flex justify-center"
+            initial={{ opacity: 0, scale: 0.6 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+          >
+            <StarIcon variant="lit" level={data.star_level} glow className="h-12 w-12" />
+          </motion.div>
+        )}
+
+        {data.streak !== null && (
+          <div className="space-y-1">
+            <p className="text-3xl font-semibold tabular-nums">
+              连续 {data.streak.current} 天
+            </p>
+            <p className="text-xs text-muted-foreground">历史最长 {data.streak.longest} 天</p>
+            <p className="text-sm text-muted-foreground">
+              {data.streak.was_reset
+                ? "新的一条线，从今天这 5 分钟开始。"
+                : "明天再来 5 分钟，让下一颗星星接着亮。"}
+            </p>
           </div>
         )}
       </CardContent>
