@@ -736,3 +736,25 @@ async def test_favorite_handled_letter_409(client, db_session, fixed_clock):
     await db_session.rollback()
     assert (await db_session.get(Letter, letter_id)).favorited is False
 
+
+async def test_duplicate_recipient_name_picks_smallest_id(
+    client, db_session, fixed_clock
+):
+    sender = await _make_user(db_session, "小明")
+    sender_id = sender.id
+    # 先插大 id、后插小 id：seq scan 的物理行序与 id 序相反，
+    # 未加 ORDER BY 时当前实现会返回大 id 那位。
+    db_session.add(User(id=900001, name="小美"))
+    await db_session.commit()
+    db_session.add(User(id=900000, name="小美"))
+    await db_session.commit()
+    sid, _ = await _seed_session(db_session, sender_id)
+
+    resp = await _send(client, sender_id, sid, "小美")
+
+    assert resp.status_code == 200
+    assert resp.json()["result"] == "delivered"
+    await db_session.rollback()
+    letter = await db_session.scalar(select(Letter).where(Letter.session_id == sid))
+    assert letter.user_id == 900000
+

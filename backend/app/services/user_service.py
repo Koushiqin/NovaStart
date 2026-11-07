@@ -23,7 +23,9 @@ async def find_by_name_or_id(db: AsyncSession, raw: str) -> User | None:
         return None
     if value.isdigit():
         return await db.scalar(select(User).where(User.id == int(value)))
-    return await db.scalar(select(User).where(User.name == value))
+    return await db.scalar(
+        select(User).where(User.name == value).order_by(User.id).limit(1)
+    )
 
 
 async def get_names(db: AsyncSession, user_ids: Iterable[int | None]) -> dict[int, str]:
