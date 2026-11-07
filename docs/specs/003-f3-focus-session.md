@@ -116,7 +116,7 @@ P2 已完成「输入 → 分析 → 开始学习」链路：`POST /api/sessions
      - `elapsed = max(0, now - started_at)`；
      - `elapsed < session_min_seconds` → `status="discarded"`，`ended_at` / `duration_sec` 保持 `NULL`，返回 `short_by_sec = min - elapsed`；
      - `elapsed ≥ session_min_seconds` → `duration_sec = min(elapsed, session_max_seconds)`、`ended_at = started_at + duration_sec`、`status="completed"`，返回 `result="settled"`。
-- **命名说明**：API 的 `result="settled"` 只表示「有效、可进结算页」；库内状态仍为 `completed`（= 有效待结算），由 P4 结算四步推进到 `settled`。两套词义不得混用：后端状态机以 §6.4 为准。
+- **命名说明**：API 的 `result="settled"` 只表示「有效、可进结算页」；库内状态 `completed` = 有效待结算，`settled` = 结算完成。唯一迁移入口是 `settle_service.advance`：`to_step=4` 时同事务写 `status="settled"`；重复调用保持 step 4 与 `settled`。两套词义不得混用：后端状态机以 §6.4 为准。
 
 #### `GET /api/sessions/current`
 
@@ -157,6 +157,7 @@ P2 已完成「输入 → 分析 → 开始学习」链路：`POST /api/sessions
 | `settled` | P4 结算流程已完成 | `duration_sec` 保持，不再改写 |
 | `discarded` | 无效，完全丢弃 | `ended_at` / `duration_sec` 为 `NULL`；不计任何统计 |
 
+- 状态迁移：`completed` --(settle_step 达 4)--> `settled`；`advance` 是唯一迁移入口，重复调用保持 4 不回退。
 - 归属日 = `started_at` 的 Asia/Shanghai 自然日；跨零点继续学习不改变归属日。
 - 一天多场：每场独立；只有 `completed` / `settled` 场次参与累计与亮度，`discarded` 不参与。
 
