@@ -198,21 +198,35 @@ cd frontend; npm run lint; npm run build
 
 ## 8. 执行结果、未验证项和遗留问题
 
-（Task 4 完成后回填。）
+（Task 4 完成后已回填，2026-11-07。）
 
 ### 8.1 已运行通过
 
-（待回填）
+| 验证 | 命令 / 场景 | 结果 |
+|---|---|---|
+| 后端全量 | `cd backend; .venv\Scripts\python.exe -m pytest -q` | 102 passed in 10.40s（含 `test_architecture.py` 棘轮） |
+| 迁移漂移 | `cd backend; .venv\Scripts\alembic.exe check` | No new upgrade operations detected |
+| 前端 lint | `cd frontend; npm run lint` | 0 error（仅既有 `components/ui/button.tsx` react-refresh warning） |
+| 前端构建 | `cd frontend; npm run build` | 126 modules，built in 1.09s |
+| 取时棘轮 | Grep `new Date(`（`frontend/src`） | 仅 `api/client.ts` 与 `hooks/useServerClock.ts` |
+| E2E 演示 A（小刚，既有 `completed` 未结束会话） | 三服务同启 + `SESSION_MIN_SECONDS=60`：进入 `/focus` | 首屏即完成态：计时 42:xx、`已经 5 分钟…` 横幅显示、URL 保持 `/focus`；点结束 → `/settle`；库中 `completed`、`duration_sec=2567`（实际时长，≥ min） |
+| E2E 演示 B（小明，新任务） | 开始学习 → 计时 → 里程碑 → 结束 | 计时从 00:2x 递增；约 80s 后横幅出现且 URL 保持 `/focus`、计时继续（00:59 → 01:11）；结束 → `/settle`；库中 `completed`、`duration_sec=78` |
+| E2E 演示 C（小美，刷新续算 + 无效结束） | 开始 → 真实重载 → 60s 内结束 | 重载后计时 00:28（未归零）；结束 → 库中 `discarded`、`ended_at` / `duration_sec` 均为 `NULL`；界面约 2s 后回首页 |
 
 ### 8.2 验证中发现并修复的问题
 
-（待回填）
+- 产品代码无需修复。
+- E2E 为重复演示同一账号，期间删除了本轮创建的 `discarded` 会话行（两行）；无效场次本就不计任何统计，属演示数据清理，不是代码缺陷。
 
 ### 8.3 未验证项与遗留问题
 
+- 「还差 X 分 X 秒」文案在 2 秒窗口内未被浏览器自动化截图捕获（三次均在窗口关闭后读取）；`discarded` 结果、约 2s 自动回首页与代码路径均已确认，建议人工点一次核对文案显示。
+- 180 分钟封顶的浏览器自动跳转未单独演示：后端封顶由 Task 2 单测覆盖，前端与 5 分钟共用「轮询发现 `ended_at` 即跳 `/settle`」的同一代码路径；未构造 180+ 会话做浏览器验证。
+- 首页「当天数据无新增累计」无法验证：P5 统计未实现，无累计数据可对照（验收 13 的后半句待 P5 实现后复验）。
+- P2 遗留 `locked` 语义：任务只要有过任意会话即锁定（`_has_any_session`），`discarded` 后首页只显示「进入专注」，而 `/current` 无会话会再跳回首页，形成短暂空转；属 P4/P5 前的已知交互缝，未在 F3 范围内修改。
 - 演示阈值 `session_min_seconds=60` 时，里程碑文案仍写「已经 5 分钟」；这是演示压缩时间的既有口径，不随阈值改写，避免把演示配置泄漏到产品文案。
 - 未处理多标签页同时点结束的并发：两次 end 都写同一 `completed` 结果，事务先后不产生重复统计（无额外统计写入）；Demo 单客户端不覆盖强一致。
-- P2 遗留的 `locked` 跳转在 `currentSessionId` 可能为空/旧值；本计划专注页以 `GET /current` 为权威，已消除该风险（待端到端确认）。
+- P2 遗留的 `locked` 跳转在 `currentSessionId` 可能为空/旧值；本计划专注页以 `GET /current` 为权威，已消除该风险（本次 E2E 已验证 `/focus` 不依赖持久化的 `currentSessionId`）。
 
 ---
 
