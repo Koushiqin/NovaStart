@@ -19,7 +19,15 @@ export default function SmokePanel() {
   const [error, setError] = useState<string | null>(null)
   const [, forceTick] = useReducer((x: number) => x + 1, 0)
   const setUserId = useAppStore((s) => s.setUserId)
+  const userId = useAppStore((s) => s.userId)
   const { now } = useServerClock()
+
+  // 切换账号即清空上一账号的任务与计时器，避免看到他人进行中的 session
+  useEffect(() => {
+    setStarterStep(null)
+    setStartedAt(null)
+    setError(null)
+  }, [userId])
 
   // 开场后每秒触发一次重渲染，驱动正计时与 server_time 显示
   useEffect(() => {
