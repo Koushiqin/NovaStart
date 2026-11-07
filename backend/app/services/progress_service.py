@@ -66,6 +66,8 @@ async def recompute_day(db: AsyncSession, user_id: int, day: date) -> Star | Non
             return star
         except IntegrityError:
             star = await db.scalar(select(Star).where(Star.user_id == user_id, Star.date == day))
+            if star is None:
+                raise RuntimeError("stars 行在唯一键冲突后消失")
 
     star.minutes = seconds // 60
     star.level = max(star.level, level)
@@ -87,6 +89,10 @@ async def mark_day_completed(db: AsyncSession, user_id: int, day: date) -> Strea
                 await db.flush()
         except IntegrityError:
             streak = await db.scalar(select(Streak).where(Streak.user_id == user_id))
+            if streak is None:
+                raise RuntimeError("streaks 行在唯一键冲突后消失")
+            # 回退说明该行由并发事务创建：账号此前已完成过某天
+            existed = True
 
     if streak.last_completed_date == day:
         # 同一自然日只 +1：重复触发不改任何值

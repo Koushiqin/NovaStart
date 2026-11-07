@@ -4,7 +4,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.clock import get_clock
@@ -406,3 +406,67 @@ async def test_concurrent_recompute_day_keeps_single_row(db_env):
             .where(Star.user_id == user_id, Star.date == TODAY)
         )
     assert rows == 1
+
+
+async def _wait_for_ungranted_lock(env, timeout: float = 5.0) -> None:
+    """轮询 pg_locks，直到出现 waiting（granted=false）的锁。"""
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + timeout
+    while loop.time() < deadline:
+        async with env() as probe:
+            waiting = await probe.scalar(text("select count(*) from pg_locks where not granted"))
+        if waiting:
+            return
+        await asyncio.sleep(0.02)
+    raise AssertionError("未观察到等待中的锁：并发插入没有被阻塞")
+
+
+async def test_concurrent_first_mark_day_other_day_sets_was_reset(db_env):
+    """首次建行并发：先创建「更早日期」行的未提交事务，后到者回退后 was_reset 必须为 True。"""
+    async with db_env() as setup:
+        user_id = await _make_user(setup)
+    older = TODAY - timedelta(days=3)
+
+    async with db_env() as s_a:
+        await progress_service.mark_day_completed(s_a, user_id, older)  # 只 flush，不提交
+        async with db_env() as s_b:
+            pending = asyncio.create_task(
+                progress_service.mark_day_completed(s_b, user_id, TODAY)
+            )
+            await _wait_for_ungranted_lock(db_env)
+            await s_a.commit()
+            await pending
+            await s_b.commit()
+
+    async with db_env() as check:
+        streak = await check.scalar(select(Streak).where(Streak.user_id == user_id))
+        assert streak is not None
+        assert streak.current == 1
+        assert streak.was_reset is True   # 修复前为 False
+        assert streak.longest == 1
+        assert streak.last_completed_date == TODAY
+
+
+async def test_concurrent_first_mark_day_same_day_single_row(db_env):
+    """同日并发首次建行：不抛异常、只有一行、current 仍为 1（早退分支不变）。"""
+    async with db_env() as setup:
+        user_id = await _make_user(setup)
+
+    async with db_env() as s_a:
+        await progress_service.mark_day_completed(s_a, user_id, TODAY)
+        async with db_env() as s_b:
+            pending = asyncio.create_task(
+                progress_service.mark_day_completed(s_b, user_id, TODAY)
+            )
+            await _wait_for_ungranted_lock(db_env)
+            await s_a.commit()
+            await pending
+            await s_b.commit()
+
+    async with db_env() as check:
+        rows = await check.scalar(
+            select(func.count()).select_from(Streak).where(Streak.user_id == user_id)
+        )
+        streak = await check.scalar(select(Streak).where(Streak.user_id == user_id))
+    assert rows == 1
+    assert streak.current == 1
