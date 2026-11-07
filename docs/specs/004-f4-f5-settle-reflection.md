@@ -208,7 +208,42 @@ cd frontend; npm run lint; npm run build
 
 ## 8. 执行结果、未验证项和遗留问题
 
-（Task 4 完成后回填。）
+### 8.1 执行结果（已运行通过）
+
+| 环节 | 命令 / 方式 | 结果 |
+|---|---|---|
+| 后端契约与实现 | `backend/tests/test_settle_summary.py`（Task 2） | 先 RED（14 failed / 1 passed，通过的为既有 `advance`），实现后 **15 passed** |
+| 后端全量回归 | `cd backend; .venv\Scripts\python.exe -m pytest -q` | **132 passed** |
+| 架构棘轮 | `cd backend; .venv\Scripts\python.exe -m pytest tests/test_architecture.py -q` | **56 passed** |
+| 迁移漂移 | `cd backend; .venv\Scripts\alembic.exe check` | No new upgrade operations（无迁移，符合 §6.2） |
+| 前端静态检查 | `cd frontend; npm run lint` | **0 error**（仅既有 `button.tsx` 一条 `react-refresh` warning） |
+| 前端构建 | `cd frontend; npm run build` | **通过**（tsc + vite，281.38 kB） |
+| 端到端演示验收（Task 4） | 三服务同启 + 浏览器 | 见下 |
+
+端到端验收（用户「小刚」id 34，会话 id 169，有效结束 `duration_sec=360`，`today_total_sec=360`）：
+
+1. `/settle` 显示「本次 6 分钟 · 今天累计 6 分钟」与 starter 原话「打开资料，只看第 1 段」，并落在第①步。—— PASS
+2. 填写「今天把推导写完了」提交 → 进入第②步，无错误提示。—— PASS
+3. 硬刷新 `/settle` → 仍停在第②步（`settle_step=1`），摘要数字不变，未回到第①步。—— PASS（Spec Task 3 延后的断点验收）
+4. 依次跳过 ②③④ → 出现「5 分钟的星星，是你自己点亮的。」+「再学一场」「回到首页」。—— PASS
+5. 落库核对：`reflections` 该会话恰 **1** 条；`sessions` 为 `settle_step=4, status="settled"`，刷新后未重复 +1。—— PASS
+6. 契约核对：OpenAPI 只有 `GET /api/sessions/{id}/summary`、`POST /api/sessions/{id}/reflection`，无感想编辑/删除端点；前端 `new Date(` 仍只出现在 `api/client.ts` 与 `hooks/useServerClock.ts`；`SettlePage` 未以 `store.settleStep` 作断点权威。
+
+提交：Spec `83fc988`、后端 `ce323f1`、前端 `d879bc7`、回填本文件（本提交）。
+
+### 8.2 未验证项
+
+- **跨零点真实运行**：归属日跨零点仅由 `test_summary_attribution_day_across_midnight`（23:30 / 00:30 参数化）覆盖，未在真实服务上等到零点手工验证。
+- **多客户端并发抢写感想**：Spec §6.2 已声明 Demo 单客户端、不加唯一约束；并发双写不保证只落一条。
+- **投递 / 信箱 / 回顾真实逻辑**：本计划只给占位卡片，真实行为属 P6/P7，未验收。
+- **星星亮度、连续天数、动画**：`star_level` / `streak` 恒 `null`，属 P5，未验收。
+
+### 8.3 遗留问题与已知边界
+
+- 第④步完成（`status="settled"`）后**整页刷新**会回首页：`GET /current` 不返回 settled 会话，内存 `currentSessionId` 也不持久化（Spec §6.3 已声明；Task 4 当次页面内走完不受影响）。
+- `reflection_service.save` 按计划接口保留 `clock` 参数，但 `Reflection.date` 取会话 `started_at` 归属日，不取写入时间（以 docstring 说明）。
+- 为统一「可访问会话状态」口径，`settle_service` 的私有常量改为公开 `SETTLEABLE_STATUSES`，由 session / reflection 服务复用（语义不变）。
+- 演示环境：本机 `python -m app.main` 带 WatchFiles 热重载；改动后需确认 OpenAPI 已出现新路由再联调（本次曾遇到旧进程占用 8000 导致新路由缺失，重启后恢复）。
 
 ---
 
