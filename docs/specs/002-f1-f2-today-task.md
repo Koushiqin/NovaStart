@@ -166,7 +166,7 @@ cd frontend; npm run lint; npm run build
 
 | 项目 | 命令 | 结果 |
 |---|---|---|
-| 后端全量测试（含 `test_task_api.py`、既有回归、架构棘轮） | `cd backend; .venv\Scripts\python.exe -m pytest -q` | 86 passed |
+| 后端全量测试（含 `test_task_api.py`、既有回归、架构棘轮） | `cd backend; .venv\Scripts\python.exe -m pytest -q` | 87 passed |
 | 前端 lint | `cd frontend; npm run lint` | 0 error + `button.tsx` 1 既有 warning |
 | 前端构建 | `cd frontend; npm run build` | `tsc -b` + vite build 通过 |
 
@@ -181,6 +181,7 @@ cd frontend; npm run lint; npm run build
 
 - 「分析后改标题 → 提示可重新分析」原先只依赖服务端 `split_stale`，但标题仅在点「分析」时 PATCH，未点分析时服务端仍是旧标题，提示永远不出现（验收条件 8 前端侧缺口）。已在 `SplitEditor` 增加 `titleChanged`（比较本地输入与 `task.raw_text`）与 `split_stale` 任一成立即提示，浏览器复验通过。
 - 浏览器自动化对受控文本输入执行键盘输入会报失焦错误，编辑保存最终以「原生 value setter + input + focusout」事件链路验证（与真实输入等价，React `onBlur` 监听 `focusout`）；已观察到 PATCH 200 与刷新持久化。
+- 整分支复审发现 `POST /api/sessions` 未校验任务归属：账号 B 可用 A 的 `task_id` 建会话，从而把 A 的任务锁死。已在 `session_service.create_session` 增加归属查询并返回 404 `TASK_NOT_FOUND`，新增 `test_create_session_rejects_other_users_task`（RED 200 → GREEN 404），全量 87 passed。会话「仅限今日任务」的限制未加（Spec 未要求，避免限制 P3/P4 复用历史任务）。
 
 ### 8.3 未验证项与遗留问题
 
