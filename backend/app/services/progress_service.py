@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 
 from sqlalchemy import Date, cast, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.clock import Clock
@@ -57,10 +58,17 @@ async def recompute_day(db: AsyncSession, user_id: int, day: date) -> Star | Non
         if level == 0:
             return None
         star = Star(user_id=user_id, date=day, minutes=seconds // 60, level=level)
-        db.add(star)
-    else:
-        star.minutes = seconds // 60
-        star.level = max(star.level, level)
+        try:
+            # 并发首次建行：唯一约束冲突时回滚本 savepoint，转更新既有行
+            async with db.begin_nested():
+                db.add(star)
+                await db.flush()
+            return star
+        except IntegrityError:
+            star = await db.scalar(select(Star).where(Star.user_id == user_id, Star.date == day))
+
+    star.minutes = seconds // 60
+    star.level = max(star.level, level)
 
     await db.flush()
     return star
@@ -72,7 +80,13 @@ async def mark_day_completed(db: AsyncSession, user_id: int, day: date) -> Strea
     existed = streak is not None
     if streak is None:
         streak = Streak(user_id=user_id, current=0, longest=0, was_reset=False)
-        db.add(streak)
+        try:
+            # 并发首次建行：主键冲突时回滚本 savepoint，转更新既有行
+            async with db.begin_nested():
+                db.add(streak)
+                await db.flush()
+        except IntegrityError:
+            streak = await db.scalar(select(Streak).where(Streak.user_id == user_id))
 
     if streak.last_completed_date == day:
         # 同一自然日只 +1：重复触发不改任何值

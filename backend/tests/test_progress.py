@@ -1,9 +1,10 @@
+import asyncio
 from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.clock import get_clock
@@ -61,6 +62,18 @@ async def db_session():
     async with session_factory() as session:
         yield session
     app.dependency_overrides.clear()
+    await engine.dispose()
+
+
+@pytest.fixture
+async def db_env():
+    """独立引擎 + 会话工厂；并发用例各开连接验证首次建行幂等。"""
+    engine = create_async_engine(TEST_DATABASE_URL)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    yield factory
     await engine.dispose()
 
 
@@ -371,3 +384,25 @@ async def test_settle_summary_filled(client, db_session, fixed_clock):
     data = resp.json()
     assert data["star_level"] == 1
     assert data["streak"] == {"current": 1, "longest": 1, "was_reset": False}
+
+
+async def test_concurrent_recompute_day_keeps_single_row(db_env):
+    """并发首次建星行：不抛 IntegrityError，库中最终只有一行。"""
+    async with db_env() as setup:
+        user_id = await _make_user(setup)
+        await _seed_session(setup, user_id, _at(TODAY, 9), duration=300)
+
+    async def recompute_once() -> None:
+        async with db_env() as db:
+            await progress_service.recompute_day(db, user_id, TODAY)
+            await db.commit()
+
+    await asyncio.gather(recompute_once(), recompute_once())
+
+    async with db_env() as check:
+        rows = await check.scalar(
+            select(func.count())
+            .select_from(Star)
+            .where(Star.user_id == user_id, Star.date == TODAY)
+        )
+    assert rows == 1
