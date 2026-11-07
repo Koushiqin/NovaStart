@@ -1,29 +1,69 @@
-import { useState } from "react"
+import { useCallback, useEffect, useState } from "react"
+import axios from "axios"
 import { apiClient } from "@/api/client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import InboxList from "@/features/mailbox/InboxList"
+import type { InboxResponse, Letter } from "@/features/mailbox/types"
 
-// P6 替换点：保持 {sessionId, onDone} 契约不变，只替换内部逻辑
+// P4 固定的组件契约，不得改签名
 interface StepProps {
   sessionId: number
   onDone: () => void
 }
 
-// 第③步占位：跳过 = 推进到 settle_step 3
+// 第③步 · 信箱：逐封收藏 / 放弃；「下一步」推进到 3（允许剩余信自然失效）
 export default function StepMailbox({ sessionId, onDone }: StepProps) {
-  const [busy, setBusy] = useState(false)
+  const [letters, setLetters] = useState<Letter[]>([])
+  const [busyId, setBusyId] = useState<number | null>(null)
+  const [advancing, setAdvancing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const handleSkip = async () => {
-    if (busy) return
-    setBusy(true)
+  const refresh = useCallback(async () => {
+    try {
+      const res = await apiClient.get<InboxResponse>("/letters/inbox")
+      setLetters(res.data.letters)
+    } catch {
+      setError("信箱加载失败，请稍后重试")
+    }
+  }, [])
+
+  useEffect(() => {
+    setLetters([])
+    setError(null)
+    void refresh()
+  }, [refresh])
+
+  // 收藏/放弃后刷新列表；409 = 信已过期，刷新后自然消失
+  const handleAction = async (letterId: number, action: "favorite" | "dismiss") => {
+    if (busyId !== null) return
+    setBusyId(letterId)
+    setError(null)
+    try {
+      await apiClient.post(`/letters/${letterId}/${action}`)
+      await refresh()
+    } catch (e) {
+      if (axios.isAxiosError(e) && e.response?.status === 409) {
+        setError("这封信已经过了一天")
+        await refresh()
+      } else {
+        setError("操作失败，请稍后重试")
+      }
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const handleNext = async () => {
+    if (advancing) return
+    setAdvancing(true)
     setError(null)
     try {
       await apiClient.post(`/settle/${sessionId}/advance`, { to_step: 3 })
       onDone()
     } catch {
       setError("操作失败，请稍后重试")
-      setBusy(false)
+      setAdvancing(false)
     }
   }
 
@@ -31,13 +71,19 @@ export default function StepMailbox({ sessionId, onDone }: StepProps) {
     <Card>
       <CardHeader>
         <CardTitle>第③步 · 信箱</CardTitle>
-        <CardDescription>后续版本解锁：查看等待你的信。</CardDescription>
+        <CardDescription>收藏想留下的信，其余的放弃。</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        <Button className="w-full" variant="outline" onClick={handleSkip} disabled={busy}>
-          {busy ? "处理中…" : "跳过"}
-        </Button>
+        <InboxList
+          letters={letters}
+          busyId={busyId}
+          onFavorite={(id) => void handleAction(id, "favorite")}
+          onDismiss={(id) => void handleAction(id, "dismiss")}
+        />
         {error && <p className="text-sm text-destructive">{error}</p>}
+        <Button className="w-full" variant="outline" onClick={handleNext} disabled={advancing}>
+          {advancing ? "处理中…" : "下一步"}
+        </Button>
       </CardContent>
     </Card>
   )

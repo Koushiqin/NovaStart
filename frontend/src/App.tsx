@@ -3,6 +3,7 @@ import HomePage from "@/pages/HomePage"
 import FocusPage from "@/pages/FocusPage"
 import SettlePage from "@/pages/SettlePage"
 import RecordsPage from "@/pages/RecordsPage"
+import MailboxPage from "@/pages/MailboxPage"
 import AccountSwitcher from "@/features/AccountSwitcher"
 
 // 路由骨架：/ /focus /settle /records 四个占位页；顶部常驻演示账号切换器
@@ -16,6 +17,7 @@ function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/focus" element={<FocusPage />} />
         <Route path="/settle" element={<SettlePage />} />
+        <Route path="/mailbox" element={<MailboxPage />} />
         <Route path="/records" element={<RecordsPage />} />
       </Routes>
     </BrowserRouter>

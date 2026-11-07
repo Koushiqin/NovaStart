@@ -217,6 +217,21 @@ export default function HomePage() {
             {error && <p className="text-sm text-destructive">请求失败：{error}</p>}
           </CardContent>
         </Card>
+        {userId != null && progress !== null && (
+          <Card>
+            <CardContent className="p-5">
+              {progress.today.level >= 1 ? (
+                <Button className="w-full" variant="outline" onClick={() => navigate("/mailbox")}>
+                  信箱
+                </Button>
+              ) : (
+                <Button className="w-full" variant="outline" disabled>
+                  信箱 · 完成今天的学习后开启
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   )

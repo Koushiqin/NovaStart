@@ -56,6 +56,12 @@ export default function SettleSummary({ data }: { data: SettleSummaryData }) {
           </motion.div>
         )}
 
+        {data.received_during_session > 0 && (
+          <p className="text-sm text-muted-foreground">
+            你专注时收到 {data.received_during_session} 封信
+          </p>
+        )}
+
         {data.streak !== null && (
           <div className="space-y-1">
             <p className="text-3xl font-semibold tabular-nums">
