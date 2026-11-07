@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.clock import Clock
+from app.models.day_task import DayTask
 from app.models.session import Session
 
 # 最小专注时长：达到即视为完成（演示节奏，5 分钟）
@@ -12,10 +13,20 @@ SESSION_MIN_MINUTES = 5
 SESSION_MAX_MINUTES = 180
 
 
+class TaskNotFound(Exception):
+    """任务不存在或不属于当前账号。"""
+
+
 async def create_session(
     db: AsyncSession, user_id: int, task_id: int, clock: Clock
 ) -> Session:
-    """开启一个专注会话（status=active）。"""
+    """开启一个专注会话（status=active）；只能挂到当前账号自己的任务上。"""
+    owned_task = await db.scalar(
+        select(DayTask.id).where(DayTask.id == task_id, DayTask.user_id == user_id)
+    )
+    if owned_task is None:
+        raise TaskNotFound
+
     session = Session(user_id=user_id, task_id=task_id, started_at=clock.now(), status="active")
     db.add(session)
     await db.commit()

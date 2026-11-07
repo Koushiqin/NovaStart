@@ -129,3 +129,26 @@ async def test_current_marks_completed_after_five_minutes(client, db_session):
 
     resp = await client.get("/api/sessions/current", headers={"X-User-Id": str(user_id)})
     assert resp.json()["session"]["status"] == "completed"  # 懒计算生效
+
+
+async def test_create_session_rejects_other_users_task(client, db_session):
+    """账号 B 不能给账号 A 的任务建会话，否则会把 A 的任务锁死。"""
+    owner_id = await _make_user(db_session)
+    other_id = await _make_user(db_session)
+    task_id = await _make_task(client, owner_id)
+
+    resp = await client.post(
+        "/api/sessions",
+        json={"task_id": task_id},
+        headers={"X-User-Id": str(other_id)},
+    )
+    assert resp.status_code == 404
+    assert resp.json()["detail"]["code"] == "TASK_NOT_FOUND"
+
+    # A 的任务没有被 B 的会话锁定，仍可编辑
+    patch = await client.patch(
+        f"/api/tasks/{task_id}",
+        json={"starter_step": "新第一步"},
+        headers={"X-User-Id": str(owner_id)},
+    )
+    assert patch.status_code == 200

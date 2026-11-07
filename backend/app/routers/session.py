@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.clock import Clock, get_clock
@@ -17,8 +17,13 @@ async def create_session(
     clock: Clock = Depends(get_clock),
     db: AsyncSession = Depends(get_session),
 ) -> SessionCreated:
-    """开始专注：写入 active 会话。"""
-    session = await session_service.create_session(db, user_id, body.task_id, clock)
+    """开始专注：写入 active 会话；任务必须属于当前账号。"""
+    try:
+        session = await session_service.create_session(db, user_id, body.task_id, clock)
+    except session_service.TaskNotFound:
+        raise HTTPException(
+            status_code=404, detail={"code": "TASK_NOT_FOUND", "message": "任务不存在"}
+        )
     return SessionCreated(
         session_id=session.id,
         started_at=session.started_at.isoformat(),
