@@ -89,7 +89,9 @@
 
 ## 修复状态与遗留（2026-11-08）
 
-全量验证：`backend/.venv/Scripts/python.exe -m pytest` → **188 passed**；`frontend` `npm run lint` → 0 error（1 条既有 `react-refresh` warning，`components/ui/button.tsx`）；`npm run build` → 成功。
+全量验证：`backend/.venv/Scripts/python.exe -m pytest` → **189 passed**；`frontend` `npm run lint` → 0 error（1 条既有 `react-refresh` warning，`components/ui/button.tsx`）；`npm run build` → 成功。
+
+终审补修（独立审查发现）：`c223909` —— `already_sent` 判定在 users 行锁之前，收件人已有 2 封有效未处理信时同场并发重试会走到 `rejected_full` 并多写一条未送达记录；修法为拿锁后重查 deliver 幂等键。用例 `test_concurrent_retry_near_capacity_still_already_sent`（修复前 `['delivered','rejected_full']`）。
 
 | 项 | 状态 | commit | 对应测试 / 说明 |
 |---|---|---|---|
@@ -114,4 +116,6 @@
 1. **T5 账号快照守卫无自动化测试**（前端无单测设施）：需人工手测——登录 A 账号进信箱页，加载中途切 B 账号，确认不出现 A 的信件。
 2. **T6 聚合口径保留**：「当日累计」仍指归属日（`started_at` 的上海时区自然日），跨零点场次会把前一天累计计入「当日」；本次只改文案，属接受口径。
 3. **T3 / T9d 并发时序**：测试无法注入屏障强制两事务同时进入临界区，用例通过不构成强保证的证据；正确性以代码结构（users 行锁先于计数快照 / savepoint + IntegrityError 转更新）为准，测试作回归。
+4. **前端操作链路错误文案**：`MailboxPage.runLetterAction` 的 `setError` / `setBusyId` 未加账号快照守卫（`refresh` 已守卫），切账号瞬间可能短暂串扰；另新增 409 `LETTER_ALREADY_HANDLED` 在 UI 仍复用「这封信已经过了一天」文案。inbox 只列未处理信，实际触发需跨标签竞态，低危。
+5. **`progress_service` 回退分支健壮性**：`except IntegrityError` 后的 `select` 无 None 兜底（READ COMMITTED 下实际不可达），且 `mark_day_completed` 的 `existed` 在回退后未刷新，跨日并发首次建行时 `was_reset` 可能误报 False。
 
