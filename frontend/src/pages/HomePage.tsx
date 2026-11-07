@@ -38,10 +38,11 @@ export default function HomePage() {
   const [busy, setBusy] = useState<"analyze" | "save" | "start" | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  // 切换账号即清空上一账号的任务与输入，再按新身份拉取今日任务
+  // 切换账号即清空上一账号的任务、输入与在途状态，再按新身份拉取今日任务
   useEffect(() => {
     setToday(null)
     setInput("")
+    setBusy(null)
     setError(null)
     if (userId == null) return
 
