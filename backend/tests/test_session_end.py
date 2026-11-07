@@ -211,6 +211,25 @@ async def test_discarded_writes_no_duration(client, db_session, fixed_clock) -> 
     assert row.duration_sec is None
 
 
+async def test_discard_unlocks_task_for_retry(client, db_session, fixed_clock) -> None:
+    """无效结束完全丢弃：不再锁定当天任务，可重开一场（否则首页进入专注会空转）。"""
+    user_id = await _make_user(db_session)
+    task_id = await _make_task(client, user_id)
+    first = await _start(client, user_id, task_id)
+    fixed_clock.advance(59)
+
+    ended = await client.post(
+        f"/api/sessions/{first['session_id']}/end", headers=await _header(user_id)
+    )
+    assert ended.json()["result"] == "discarded"
+
+    today = await client.get("/api/tasks/today", headers=await _header(user_id))
+    assert today.json()["task"]["locked"] is False
+
+    second = await _start(client, user_id, task_id)
+    assert second["session_id"] != first["session_id"]
+
+
 async def test_end_at_min_settled(client, db_session, fixed_clock) -> None:
     """300 秒结束 → 有效，duration_sec=300。"""
     user_id = await _make_user(db_session)

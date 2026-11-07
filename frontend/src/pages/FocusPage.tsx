@@ -72,9 +72,15 @@ export default function FocusPage() {
   const [, forceTick] = useState(0)
   // 已发起离开（跳结算/回首页）后停止轮询写入，避免重复导航
   const leavingRef = useRef(false)
+  // 无效结束的 2 秒回首页定时器，卸载/切账号时必须清理，避免带走新账号视图
+  const noticeTimerRef = useRef<number | null>(null)
 
   // 挂载/切账号：拉取当前会话；无会话回首页；账号未选不发业务请求
   useEffect(() => {
+    if (noticeTimerRef.current !== null) {
+      window.clearTimeout(noticeTimerRef.current)
+      noticeTimerRef.current = null
+    }
     setSession(null)
     setError(null)
     setDiscardNotice(null)
@@ -118,15 +124,25 @@ export default function FocusPage() {
     return () => window.clearInterval(id)
   }, [])
 
+  // 卸载时清理 2 秒回首页定时器
+  useEffect(
+    () => () => {
+      if (noticeTimerRef.current !== null) window.clearTimeout(noticeTimerRef.current)
+    },
+    []
+  )
+
   // 15 秒轮询：触发 5 分钟/180 分钟懒标记，并用响应里的 server_time 校正偏移
   useEffect(() => {
     if (userId == null) return
+    const accountId = userId
     const id = window.setInterval(() => {
       if (leavingRef.current) return
       apiClient
         .get<CurrentSessionResponse>("/sessions/current")
         .then((res) => {
-          if (leavingRef.current) return
+          // 切账号后丢弃在途响应，避免用上一账号的会话覆盖当前视图
+          if (leavingRef.current || useAppStore.getState().userId !== accountId) return
           const current = res.data.session
           if (current === null) return
           setSession(current)
@@ -144,23 +160,27 @@ export default function FocusPage() {
 
   const handleEnd = async () => {
     if (!session || ending) return
+    const accountId = userId
     setEnding(true)
     setError(null)
     try {
       const res = await apiClient.post<SessionEndedResponse>(`/sessions/${session.id}/end`)
+      if (useAppStore.getState().userId !== accountId) return
       if (res.data.result === "settled") {
         leavingRef.current = true
         navigate("/settle")
         return
       }
       setDiscardNotice(formatShortBy(res.data.short_by_sec ?? 0))
-      window.setTimeout(() => {
+      noticeTimerRef.current = window.setTimeout(() => {
         leavingRef.current = true
         navigate("/")
       }, DISCARD_NOTICE_MS)
     } catch (e) {
-      setError(errorMessage(e))
-      setEnding(false)
+      if (useAppStore.getState().userId === accountId) {
+        setError(errorMessage(e))
+        setEnding(false)
+      }
     }
   }
 

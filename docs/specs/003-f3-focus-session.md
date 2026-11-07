@@ -136,7 +136,7 @@ P2 已完成「输入 → 分析 → 开始学习」链路：`POST /api/sessions
 
 - **无迁移**：`sessions.ended_at`（可空 timestamptz）、`duration_sec`（可空 int）、`status String(20)` 已存在。
 - 不新增列、不改可空性、不加唯一约束（「同日唯一」不适用于 session；同账号进行中唯一由 service 先查后复用保证，Demo 单客户端）。
-- 无效场次保留会话行（`status="discarded"`，`duration_sec` / `ended_at` 为 `NULL`），以保证重复结束幂等；「完全丢弃」指不计任何统计（时长、累计、亮度、投递、连续天数），不是物理删除。
+- 无效场次保留会话行（`status="discarded"`，`duration_sec` / `ended_at` 为 `NULL`），以保证重复结束幂等；「完全丢弃」指不计任何统计（时长、累计、亮度、投递、连续天数），且不锁定当天任务——首页仍可重新开始，再开一场（`task_service._has_any_session` 排除 `discarded`）。
 - 归属日不落列：由 `started_at` 的 Asia/Shanghai 自然日派生，P5 统计时消费。
 
 ### 6.3 兼容性与配置
@@ -215,7 +215,8 @@ cd frontend; npm run lint; npm run build
 
 ### 8.2 验证中发现并修复的问题
 
-- 产品代码无需修复。
+- **账号切换的在途响应**：`FocusPage` 的 15s 轮询与结束回调此前只查 `leavingRef`，切账号瞬间可能用上一账号的会话/跳转覆盖新账号视图。已在两处回调比对 `useAppStore.getState().userId` 丢弃过期响应，并清理无效结束的 2 秒回首页定时器（`FocusPage.tsx`；前端无测试框架，修复以 lint + build + 端到端复验为准）。
+- **无效结束后任务被锁死**：`task_service._has_any_session` 把 `discarded` 也算「已有会话」，首页只显示「进入专注」，而 `/current` 无会话会立刻弹回首页，形成死循环、当天无法重开。改为排除 `discarded`（完全丢弃不应影响任何后续入口），新增 `test_discard_unlocks_task_for_retry` RED→GREEN；§6.2 已补该口径。
 - E2E 为重复演示同一账号，期间删除了本轮创建的 `discarded` 会话行（两行）；无效场次本就不计任何统计，属演示数据清理，不是代码缺陷。
 
 ### 8.3 未验证项与遗留问题
@@ -223,7 +224,7 @@ cd frontend; npm run lint; npm run build
 - 「还差 X 分 X 秒」文案在 2 秒窗口内未被浏览器自动化截图捕获（三次均在窗口关闭后读取）；`discarded` 结果、约 2s 自动回首页与代码路径均已确认，建议人工点一次核对文案显示。
 - 180 分钟封顶的浏览器自动跳转未单独演示：后端封顶由 Task 2 单测覆盖，前端与 5 分钟共用「轮询发现 `ended_at` 即跳 `/settle`」的同一代码路径；未构造 180+ 会话做浏览器验证。
 - 首页「当天数据无新增累计」无法验证：P5 统计未实现，无累计数据可对照（验收 13 的后半句待 P5 实现后复验）。
-- P2 遗留 `locked` 语义：任务只要有过任意会话即锁定（`_has_any_session`），`discarded` 后首页只显示「进入专注」，而 `/current` 无会话会再跳回首页，形成短暂空转；属 P4/P5 前的已知交互缝，未在 F3 范围内修改。
+- 有效场次（`completed` / `settled`）仍会锁定当天任务：这是 P2「计时开始后锁定文案」的既有语义，重开入口由 P4 结算后的「再学一场」承担，本轮不改。
 - 演示阈值 `session_min_seconds=60` 时，里程碑文案仍写「已经 5 分钟」；这是演示压缩时间的既有口径，不随阈值改写，避免把演示配置泄漏到产品文案。
 - 未处理多标签页同时点结束的并发：两次 end 都写同一 `completed` 结果，事务先后不产生重复统计（无额外统计写入）；Demo 单客户端不覆盖强一致。
 - P2 遗留的 `locked` 跳转在 `currentSessionId` 可能为空/旧值；本计划专注页以 `GET /current` 为权威，已消除该风险（本次 E2E 已验证 `/focus` 不依赖持久化的 `currentSessionId`）。

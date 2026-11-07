@@ -64,8 +64,12 @@ async def _get_owned_task(db: AsyncSession, user_id: int, task_id: int) -> DayTa
 
 
 async def _has_any_session(db: AsyncSession, task_id: int) -> bool:
-    """存在该任务的任意会话即锁定（含 active / completed / settled / discarded）。"""
-    return bool(await db.scalar(select(exists().where(Session.task_id == task_id))))
+    """存在该任务的有效会话即锁定（active / completed / settled）；discarded 完全丢弃不锁定。"""
+    return bool(
+        await db.scalar(
+            select(exists().where(Session.task_id == task_id, Session.status != "discarded"))
+        )
+    )
 
 
 async def _has_done_session(db: AsyncSession, task_id: int) -> bool:
