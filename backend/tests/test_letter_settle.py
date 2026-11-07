@@ -55,7 +55,9 @@ async def _make_user(db_session: AsyncSession) -> int:
     return user.id
 
 
-async def _make_session_row(db_session: AsyncSession, user_id: int, status: str = "active") -> int:
+async def _make_session_row(
+    db_session: AsyncSession, user_id: int, status: str = "active", *, ended: bool = False
+) -> int:
     """直接落库一条会话（deliver/settle 测试不走 API 建会话）。"""
     task = DayTask(
         user_id=user_id,
@@ -66,16 +68,26 @@ async def _make_session_row(db_session: AsyncSession, user_id: int, status: str 
     )
     db_session.add(task)
     await db_session.flush()
+    started_at = datetime.now(SHANGHAI_TZ)
     session = Session(
         user_id=user_id,
         task_id=task.id,
-        started_at=datetime.now(SHANGHAI_TZ),
+        started_at=started_at,
         status=status,
+        ended_at=started_at + timedelta(minutes=5) if ended else None,
+        duration_sec=300 if ended else None,
     )
     db_session.add(session)
     await db_session.commit()
     await db_session.refresh(session)
     return session.id
+
+
+async def _session_row(db_session: AsyncSession, session_id: int) -> Session:
+    await db_session.rollback()
+    row = await db_session.get(Session, session_id)
+    assert row is not None
+    return row
 
 
 async def test_inbox_caps_at_three_unhandled(client, db_session):
@@ -148,7 +160,7 @@ async def test_favorite_is_idempotent(client, db_session):
 
 async def test_settle_advance_idempotent_and_monotonic(client, db_session):
     user_id = await _make_user(db_session)
-    sid = await _make_session_row(db_session, user_id, status="completed")
+    sid = await _make_session_row(db_session, user_id, status="completed", ended=True)
 
     headers = {"X-User-Id": str(user_id)}
     r = await client.post(f"/api/settle/{sid}/advance", json={"to_step": 2}, headers=headers)
@@ -159,6 +171,53 @@ async def test_settle_advance_idempotent_and_monotonic(client, db_session):
     assert r.json()["settle_step"] == 3
     r = await client.post(f"/api/settle/{sid}/advance", json={"to_step": 2}, headers=headers)
     assert r.json()["settle_step"] == 3  # 回退请求不生效
+
+
+async def test_advance_rejects_in_progress(client, db_session):
+    user_id = await _make_user(db_session)
+    sid = await _make_session_row(db_session, user_id, status="completed")  # ended_at=None
+
+    resp = await client.post(
+        f"/api/settle/{sid}/advance",
+        json={"to_step": 2},
+        headers={"X-User-Id": str(user_id)},
+    )
+
+    assert resp.status_code == 404
+    assert resp.json()["detail"]["code"] == "SESSION_NOT_FOUND"
+    assert (await _session_row(db_session, sid)).settle_step == 0
+
+
+async def test_advance_rejects_other_users_session(client, db_session):
+    owner_id = await _make_user(db_session)
+    other_id = await _make_user(db_session)
+    sid = await _make_session_row(db_session, owner_id, status="completed", ended=True)
+
+    resp = await client.post(
+        f"/api/settle/{sid}/advance",
+        json={"to_step": 2},
+        headers={"X-User-Id": str(other_id)},
+    )
+
+    assert resp.status_code == 404
+    assert (await _session_row(db_session, sid)).settle_step == 0
+
+
+async def test_advance_four_marks_settled_and_monotonic(client, db_session):
+    user_id = await _make_user(db_session)
+    sid = await _make_session_row(db_session, user_id, status="completed", ended=True)
+    headers = {"X-User-Id": str(user_id)}
+
+    r = await client.post(f"/api/settle/{sid}/advance", json={"to_step": 4}, headers=headers)
+    assert r.json()["settle_step"] == 4
+    row = await _session_row(db_session, sid)
+    assert row.status == "settled"
+
+    r2 = await client.post(f"/api/settle/{sid}/advance", json={"to_step": 2}, headers=headers)
+    assert r2.json()["settle_step"] == 4
+    row = await _session_row(db_session, sid)
+    assert row.status == "settled"
+    assert row.settle_step == 4
 
 
 async def test_history_lazy_cleanup_keeps_latest_100(client, db_session):

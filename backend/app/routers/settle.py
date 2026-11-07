@@ -14,14 +14,17 @@ router = APIRouter(prefix="/api/settle", tags=["settle"])
 async def advance(
     session_id: int,
     body: SettleAdvance,
-    _user_id: int = Depends(get_current_user_id),
+    user_id: int = Depends(get_current_user_id),
     clock: Clock = Depends(get_clock),
     db: AsyncSession = Depends(get_session),
 ) -> SettleState:
     """推进结算步骤（1..4），带条件更新天然幂等，只进不退。"""
-    step = await settle_service.advance(db, session_id, body.to_step)
+    step = await settle_service.advance(db, session_id, body.to_step, user_id)
     if step is None:
-        raise HTTPException(status_code=404, detail="session not found")
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "SESSION_NOT_FOUND", "message": "会话不存在"},
+        )
     return SettleState(
         session_id=session_id,
         settle_step=step,
