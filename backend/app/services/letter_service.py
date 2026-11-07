@@ -32,6 +32,10 @@ class LetterExpired(Exception):
     """信件已过当日 24:00，不能再收藏或放弃。"""
 
 
+class LetterAlreadyHandled(Exception):
+    """信件已被放弃或已收藏为历史，不能再用收藏「复活」。"""
+
+
 class ContentTooLong(Exception):
     """信件正文超过 200 字。"""
 
@@ -291,6 +295,9 @@ async def favorite(
         raise LetterExpired
     if letter.favorited:
         return letter
+    if letter.handled:
+        # 已放弃的信不能再收藏复活进历史（幂等重试走上面的 favorited 分支）
+        raise LetterAlreadyHandled
 
     letter.favorited = True
     letter.handled = True

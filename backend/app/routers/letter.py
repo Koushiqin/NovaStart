@@ -145,6 +145,14 @@ async def favorite(
             status_code=409,
             detail={"code": "LETTER_EXPIRED", "message": "这封信已经过了一天"},
         )
+    except letter_service.LetterAlreadyHandled:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "LETTER_ALREADY_HANDLED",
+                "message": "这封信已处理，不能再收藏",
+            },
+        )
     if letter is None:
         raise _not_found()
     names = await user_service.get_names(db, [letter.sender_id])

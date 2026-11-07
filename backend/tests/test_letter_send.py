@@ -722,3 +722,17 @@ async def test_retry_deliver_with_overlong_content_returns_already_sent(
     assert resp.status_code == 200
     assert resp.json()["result"] == "already_sent"
 
+
+async def test_favorite_handled_letter_409(client, db_session, fixed_clock):
+    recipient = await _make_user(db_session, "小美")
+    letter_id = await _insert_letter(db_session, recipient.id, handled=True)
+
+    resp = await client.post(
+        f"/api/letters/{letter_id}/favorite", headers=_hdr(recipient.id)
+    )
+
+    assert resp.status_code == 409
+    assert resp.json()["detail"]["code"] == "LETTER_ALREADY_HANDLED"
+    await db_session.rollback()
+    assert (await db_session.get(Letter, letter_id)).favorited is False
+
