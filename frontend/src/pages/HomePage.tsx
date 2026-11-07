@@ -9,6 +9,10 @@ import TaskComposer from "@/features/task/TaskComposer"
 import SplitEditor from "@/features/task/SplitEditor"
 import type { AnalyzeResult, TaskResponse, TodayResponse } from "@/features/task/types"
 
+interface CurrentSessionResponse {
+  session: { id: number; ended_at: string | null } | null
+}
+
 // FastAPI 错误体可能是字符串或 {code, message}，422 时是校验错误数组
 function errorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
@@ -115,15 +119,24 @@ export default function HomePage() {
 
   const handleStart = async () => {
     if (!task || !task.analyzed) return
-    // 已锁定说明已有会话：只跳转，避免重复创建 active session
-    if (locked) {
-      navigate("/focus")
-      return
-    }
     const accountId = userId
     setBusy("start")
     setError(null)
     try {
+      if (locked) {
+        // 锁定态可能是进行中、已结束待结算，或已结算完成（无当前会话）
+        const current = await apiClient.get<CurrentSessionResponse>("/sessions/current")
+        if (!stillCurrentAccount(accountId)) return
+        const ongoing = current.data.session
+        if (ongoing && ongoing.ended_at === null) {
+          navigate("/focus")
+          return
+        }
+        if (ongoing && ongoing.ended_at !== null) {
+          navigate("/settle")
+          return
+        }
+      }
       const res = await apiClient.post<{ session_id: number }>("/sessions", { task_id: task.id })
       if (!stillCurrentAccount(accountId)) return
       setCurrentSessionId(res.data.session_id)
@@ -173,7 +186,7 @@ export default function HomePage() {
                 onClick={handleStart}
                 disabled={!task?.analyzed || busy !== null}
               >
-                {busy === "start" ? "进入中…" : locked ? "进入专注" : "开始学习"}
+                {busy === "start" ? "进入中…" : locked ? "继续" : "开始学习"}
               </Button>
             </>
           )}

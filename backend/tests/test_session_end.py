@@ -154,6 +154,26 @@ async def test_start_reuses_completed_without_end(client, db_session, fixed_cloc
     assert second["session_id"] == first["session_id"]
 
 
+async def test_create_session_after_ended_creates_new(client, db_session, fixed_clock) -> None:
+    """有效结束（ended_at 已写）后再开始，必须新建会话而不是复用。"""
+    user_id = await _make_user(db_session)
+    task_id = await _make_task(client, user_id)
+
+    first = await _start(client, user_id, task_id)
+    fixed_clock.advance(300)
+    ended = await client.post(
+        f"/api/sessions/{first['session_id']}/end", headers=await _header(user_id)
+    )
+    assert ended.json()["result"] == "settled"
+
+    second = await _start(client, user_id, task_id)
+
+    assert second["session_id"] != first["session_id"]
+    row = await _row(db_session, first["session_id"])
+    assert row.status == "completed"
+    assert row.ended_at is not None
+
+
 async def test_lazy_min_marks_completed_without_ending(client, db_session, fixed_clock) -> None:
     """299 秒仍 active；300 秒置 completed，但仍未结束（ended_at / duration_sec 为 NULL）。"""
     user_id = await _make_user(db_session)

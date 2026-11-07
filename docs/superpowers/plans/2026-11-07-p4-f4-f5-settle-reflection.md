@@ -78,7 +78,7 @@ async def test_reflection_over_200_422(client): ...
 - [ ] **Step 1:** 进入页面按 `currentSessionId` 拉 summary；`settle_step>=4` → 直接完成态（摘要 + CosmicWhisper）；否则渲染第 `settle_step+1` 步。
 - [ ] **Step 2:** `SettleSummary`：「本次 X 分钟 · 今天累计 XX 分钟」+ starter 原话复述（不用「恭喜完成任务」类空话）；star/streak 槽位渲染 null 占位（P5 替换）。
 - [ ] **Step 3:** `StepReflection`：textarea（maxLength 200）+「提交感想」/「跳过」→ 提交或空白提交后 `onDone` 刷新 summary。
-- [ ] **Step 4:** 三个占位组件统一样式：标题 +「后续版本解锁」说明 +「跳过」按钮（`advance` 到下一步）；第 ④ 步完成后渲染 `CosmicWhisper` 文案 +「回到首页」。
+- [ ] **Step 4:** 三个占位组件统一样式：标题 +「后续版本解锁」说明 +「跳过」按钮（`advance` 到下一步）；第 ④ 步完成后渲染 `CosmicWhisper` 文案 +「回到首页」+「再学一场」（`POST /api/sessions {task_id}` 成功后跳 `/focus`）。
 - [ ] **Step 5:** `npm run lint` + `npm run build` 通过；手工验证：走到第 2 步刷新 → 仍落在第 2 步。
 - [ ] **Step 6: Commit** `feat(frontend): settle four-step skeleton with reflection`
 
