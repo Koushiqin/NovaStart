@@ -36,3 +36,5 @@ class SessionInfo(BaseModel):
 class CurrentSession(BaseModel):
     session: SessionInfo | None
     server_time: str
+    # 最长时长（秒）：专注页据此在封顶时刻立即补一次懒标记，不必等 15s 轮询
+    session_max_seconds: int

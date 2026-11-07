@@ -22,6 +22,7 @@ interface SessionInfo {
 interface CurrentSessionResponse {
   session: SessionInfo | null
   server_time: string
+  session_max_seconds: number
 }
 
 interface SessionEndedResponse {
@@ -74,6 +75,10 @@ export default function FocusPage() {
   const leavingRef = useRef(false)
   // 无效结束的 2 秒回首页定时器，卸载/切账号时必须清理，避免带走新账号视图
   const noticeTimerRef = useRef<number | null>(null)
+  // 封顶时刻是否已补发过一次懒标记请求
+  const capTriggeredRef = useRef(false)
+  // 服务端最长时长（秒），用于封顶时立即补懒标记并按上限截断展示
+  const [maxSeconds, setMaxSeconds] = useState<number | null>(null)
 
   // 挂载/切账号：拉取当前会话；无会话回首页；账号未选不发业务请求
   useEffect(() => {
@@ -82,10 +87,12 @@ export default function FocusPage() {
       noticeTimerRef.current = null
     }
     setSession(null)
+    setMaxSeconds(null)
     setError(null)
     setDiscardNotice(null)
     setEnding(false)
     leavingRef.current = false
+    capTriggeredRef.current = false
     if (userId == null) return
 
     let cancelled = false
@@ -94,6 +101,7 @@ export default function FocusPage() {
       .get<CurrentSessionResponse>("/sessions/current")
       .then((res) => {
         if (cancelled) return
+        setMaxSeconds(res.data.session_max_seconds)
         const current = res.data.session
         if (current === null) {
           leavingRef.current = true
@@ -143,6 +151,7 @@ export default function FocusPage() {
         .then((res) => {
           // 切账号后丢弃在途响应，避免用上一账号的会话覆盖当前视图
           if (leavingRef.current || useAppStore.getState().userId !== accountId) return
+          setMaxSeconds(res.data.session_max_seconds)
           const current = res.data.session
           if (current === null) return
           setSession(current)
@@ -158,6 +167,39 @@ export default function FocusPage() {
     return () => window.clearInterval(id)
   }, [userId, navigate])
 
+  // 派生正计时（服务端当前时间 − started_at），供封顶判定与渲染共用
+  const startedAtMs = session === null ? null : Date.parse(session.started_at)
+  const elapsedSec =
+    startedAtMs !== null && !Number.isNaN(startedAtMs)
+      ? Math.max(0, Math.floor((clock.now().getTime() - startedAtMs) / 1000))
+      : session?.elapsed_sec ?? 0
+
+  // 本地计时一到最长时长：立刻补一次请求触发服务端懒结束，无需等下一个 15s 轮询
+  useEffect(() => {
+    if (session === null || session.ended_at !== null) return
+    if (maxSeconds === null || elapsedSec < maxSeconds) return
+    if (capTriggeredRef.current) return
+    const accountId = userId
+    capTriggeredRef.current = true
+    apiClient
+      .get<CurrentSessionResponse>("/sessions/current")
+      .then((res) => {
+        if (leavingRef.current || useAppStore.getState().userId !== accountId) return
+        setMaxSeconds(res.data.session_max_seconds)
+        const current = res.data.session
+        if (current === null) return
+        setSession(current)
+        if (current.ended_at !== null) {
+          leavingRef.current = true
+          navigate("/settle")
+        }
+      })
+      .catch(() => {
+        // 补发失败时下一秒再试，仍由 15s 轮询兜底
+        capTriggeredRef.current = false
+      })
+  }, [elapsedSec, maxSeconds, session, userId, navigate])
+
   const handleEnd = async () => {
     if (!session || ending) return
     const accountId = userId
@@ -172,6 +214,7 @@ export default function FocusPage() {
         return
       }
       setDiscardNotice(formatShortBy(res.data.short_by_sec ?? 0))
+      setEnding(false)
       noticeTimerRef.current = window.setTimeout(() => {
         leavingRef.current = true
         navigate("/")
@@ -192,13 +235,10 @@ export default function FocusPage() {
     )
   }
 
-  const startedAtMs = session === null ? null : Date.parse(session.started_at)
-  const elapsedSec =
-    startedAtMs !== null && !Number.isNaN(startedAtMs)
-      ? Math.max(0, Math.floor((clock.now().getTime() - startedAtMs) / 1000))
-      : session?.elapsed_sec ?? 0
   // 已满最短时长但未结束：展示一次性里程碑提示，背景略亮，计时继续
   const milestone = session !== null && session.status === "completed" && session.ended_at === null
+  // 封顶后按服务端上限截断展示，避免出现超过 180:00 的读数
+  const displayElapsedSec = maxSeconds === null ? elapsedSec : Math.min(elapsedSec, maxSeconds)
 
   return (
     <div
@@ -217,7 +257,7 @@ export default function FocusPage() {
               </p>
             </div>
 
-            <FocusTimer elapsedSec={elapsedSec} />
+            <FocusTimer elapsedSec={displayElapsedSec} />
 
             {milestone && <MilestoneBanner />}
 
@@ -227,9 +267,9 @@ export default function FocusPage() {
                 size="lg"
                 variant={milestone ? "default" : "outline"}
                 onClick={handleEnd}
-                disabled={ending}
+                disabled={ending || discardNotice !== null}
               >
-                {ending ? "结束中…" : "结束"}
+                {ending ? "结束中…" : discardNotice ? "已结束" : "结束"}
               </Button>
               {discardNotice && (
                 <p className="text-center text-sm text-muted-foreground">{discardNotice}</p>

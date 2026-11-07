@@ -120,10 +120,11 @@ P2 已完成「输入 → 分析 → 开始学习」链路：`POST /api/sessions
 
 #### `GET /api/sessions/current`
 
-- 响应 `{session: SessionInfo | null, server_time}`；`SessionInfo` 在原有 `id` / `started_at` / `elapsed_sec` / `status` 上增加：
+- 响应 `{session: SessionInfo | null, server_time, session_max_seconds}`；`SessionInfo` 在原有 `id` / `started_at` / `elapsed_sec` / `status` 上增加：
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
+| `session_max_seconds` | int | 服务端最长时长（顶层字段，非会话字段）；前端据 `started_at + session_max_seconds` 在封顶时刻立即补一次请求触发懒结束，并按它截断计时展示 |
 | `ended_at` | str \| null | 已结束（显式结束或 180 封顶）时的时间；5 分钟里程碑只置 `completed` 不写此值 |
 | `task_starter_step` | str \| null | 本场任务当前采用版 starter，供专注页展示；任务缺失时为 `null` |
 
@@ -217,6 +218,8 @@ cd frontend; npm run lint; npm run build
 
 - **账号切换的在途响应**：`FocusPage` 的 15s 轮询与结束回调此前只查 `leavingRef`，切账号瞬间可能用上一账号的会话/跳转覆盖新账号视图。已在两处回调比对 `useAppStore.getState().userId` 丢弃过期响应，并清理无效结束的 2 秒回首页定时器（`FocusPage.tsx`；前端无测试框架，修复以 lint + build + 端到端复验为准）。
 - **无效结束后任务被锁死**：`task_service._has_any_session` 把 `discarded` 也算「已有会话」，首页只显示「进入专注」，而 `/current` 无会话会立刻弹回首页，形成死循环、当天无法重开。改为排除 `discarded`（完全丢弃不应影响任何后续入口），新增 `test_discard_unlocks_task_for_retry` RED→GREEN；§6.2 已补该口径。
+- **无效结束后的按钮状态**：`discarded` 分支立即复位 `ending`，2 秒差额提示期间按钮禁用并显示「已结束」，不再停留在「结束中…」。
+- **180 封顶不再等轮询**：`GET /current` 新增顶层 `session_max_seconds`；专注页本地计时一到上限就立即补一次请求触发服务端懒结束（`capTriggeredRef` 防重复，失败时下一秒重试），并把展示时长按上限截断，避免超过 180:00；15 秒轮询仍作兜底。
 - E2E 为重复演示同一账号，期间删除了本轮创建的 `discarded` 会话行（两行）；无效场次本就不计任何统计，属演示数据清理，不是代码缺陷。
 
 ### 8.3 未验证项与遗留问题

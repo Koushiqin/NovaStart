@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.clock import Clock, get_clock
+from app.config import settings
 from app.db import get_session
 from app.deps import get_current_user_id
 from app.schemas.session import (
@@ -86,4 +87,8 @@ async def current_session(
         if session
         else None
     )
-    return CurrentSession(session=info, server_time=clock.now().isoformat())
+    return CurrentSession(
+        session=info,
+        server_time=clock.now().isoformat(),
+        session_max_seconds=settings.session_max_seconds,
+    )

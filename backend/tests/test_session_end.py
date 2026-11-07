@@ -403,6 +403,17 @@ async def test_thresholds_come_from_settings(client, db_session, fixed_clock, mo
     assert settled.json()["duration_sec"] == 60
 
 
+async def test_current_exposes_session_max_seconds(client, db_session, monkeypatch) -> None:
+    """current 暴露最长时长，前端才能在封顶时刻立即补懒标记（不必等 15s 轮询）。"""
+    monkeypatch.setattr(settings, "session_max_seconds", 120)
+    user_id = await _make_user(db_session)
+    task_id = await _make_task(client, user_id)
+    await _start(client, user_id, task_id)
+
+    current = await client.get("/api/sessions/current", headers=await _header(user_id))
+    assert current.json()["session_max_seconds"] == 120
+
+
 async def test_lazy_uses_started_at_across_midnight(
     client, db_session, fixed_clock
 ) -> None:
