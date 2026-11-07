@@ -53,6 +53,8 @@
 ```python
 async def test_summary_fields(client): ...               # duration/today_total/task_text/starter_text(采用版)/settle_step
 async def test_summary_today_total_valid_only(client): ...  # 当天另有一场 discarded → 不计入
+async def test_summary_excludes_ongoing_completed(client): ...  # 当天另一场仅达 min 但未结束（ended_at=NULL）→ 不计入
+async def test_summary_attribution_day_across_midnight(client, ...): ...  # parametrize 23:30/00:30，归属日按 started_at 的 Asia/Shanghai 日期
 async def test_summary_discarded_session_404(client): ...
 async def test_reflection_save_advances_step(client): ...  # 201, settle_step==1, Reflection.date==started_at 日期
 async def test_reflection_blank_skips(client): ...         # "   " → 无记录, settle_step==1
@@ -61,7 +63,7 @@ async def test_reflection_over_200_422(client): ...
 ```
 
 - [ ] **Step 2:** 跑确认 FAIL（沙箱外）。
-- [ ] **Step 3:** 实现 service（reflection 写入与 `settle_service.advance(db, session_id, 1, user_id)` 同一事务）；summary 的 `today_total_sec` 用 `select(func.sum(duration_sec)).where(user_id, status.in_(("completed", "settled")), cast(func.timezone("Asia/Shanghai", Session.started_at), Date)==归属日)`；占位字段按 Produces 常量返回；第④步完成时 `advance(..., 4)` 同事务置 `status="settled"`。
+- [ ] **Step 3:** 实现 service（reflection 写入与 `settle_service.advance(db, session_id, 1, user_id)` 同一事务）；summary 的 `today_total_sec` 用 `select(func.sum(duration_sec)).where(user_id, status.in_(("completed", "settled")), Session.ended_at.is_not(None), cast(func.timezone("Asia/Shanghai", Session.started_at), Date)==归属日)`；占位字段按 Produces 常量返回；第④步完成时 `advance(..., 4)` 同事务置 `status="settled"`。
 - [ ] **Step 4:** 测试全 PASS + 棘轮 + 全量回归。
 - [ ] **Step 5: Commit** `feat(backend): settle summary and one-shot reflection`
 

@@ -4,7 +4,7 @@
 
 **Goal:** 结算第④步（①②③走完后自动出现，无需用户操作）：从自己过去有效场次随机抽一条，以「过去的你」卡片展示日期 + 任务原文 + 感想（无感想只显示任务原文）；排除本场与当天所有场次；无历史时只显示一句「等待宇宙的讯息」；点击卡片跳对应日期记录（P8 填详情，本计划链接到既有 `/records` 占位路由）。
 
-**Architecture:** 后端新增 `GET /api/review/random`：候选池 = 当前用户 `status IN ('completed','settled')` 且归属日（`cast(func.timezone("Asia/Shanghai", Session.started_at), Date)`）< 今天的会话，排除 query 传入的本场 id；`ORDER BY random() LIMIT 1`，left join Reflection 与 DayTask。前端替换 P4 占位 `StepReview.tsx`（props 契约不变）。
+**Architecture:** 后端新增 `GET /api/review/random`：候选池 = 当前用户 `status IN ('completed','settled') AND ended_at IS NOT NULL` 且归属日（`cast(func.timezone("Asia/Shanghai", Session.started_at), Date)`）< 今天的会话，排除 query 传入的本场 id；`ORDER BY random() LIMIT 1`，left join Reflection 与 DayTask。前端替换 P4 占位 `StepReview.tsx`（props 契约不变）。
 
 **Tech Stack:** FastAPI + SQLAlchemy；React 18。
 
@@ -18,7 +18,7 @@
 
 ## Global Constraints
 
-- 同 P1 全部；另：候选只取有效场次（discarded 排除）；归属日 = `started_at` 的 Asia/Shanghai 日期；空态文案逐字「等待宇宙的讯息」，不加额外引导。
+- 同 P1 全部；另：候选只取有效场次（`status IN ('completed','settled') AND ended_at IS NOT NULL`；`discarded` 与仍在进行 / 仅达里程碑但未结束的场次均排除）；归属日 = `started_at` 的 Asia/Shanghai 日期；空态文案逐字「等待宇宙的讯息」，不加额外引导。
 
 ## Review Focus
 
@@ -53,6 +53,7 @@ async def test_empty_pool_returns_null(client): ...        # 新账号只有今�
 async def test_reflection_nullable(client): ...            # 无感想候选 → reflection is None
 async def test_discarded_excluded(client): ...             # 昨天的 discarded 不入选
 async def test_cross_midnight_attribution(client): ...     # 昨天 23:58 开始的有效场今天可被抽到
+async def test_ongoing_completed_excluded(client): ...     # 昨天开始的 completed 但 ended_at=NULL（仍在学）不入选
 ```
 
 - [ ] **Step 2:** 跑确认 FAIL（沙箱外）。
