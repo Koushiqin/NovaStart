@@ -159,6 +159,7 @@ P2 已完成「输入 → 分析 → 开始学习」链路：`POST /api/sessions
 
 - 状态迁移：`completed` --(settle_step 达 4)--> `settled`；`advance` 是唯一迁移入口，重复调用保持 4 不回退。
 - 归属日 = `started_at` 的 Asia/Shanghai 自然日；跨零点继续学习不改变归属日。
+- 归属日 SQL 口径：一律写 `cast(func.timezone("Asia/Shanghai", Session.started_at), Date)`（等价 `started_at AT TIME ZONE 'Asia/Shanghai'`），禁止裸 `cast(started_at, Date)`——PostgreSQL 容器默认 UTC，会让 0–8 点场次落到前一天。
 - 一天多场：每场独立；只有 `completed` / `settled` 场次参与累计与亮度，`discarded` 不参与。
 
 ## 7. 测试场景与验证命令

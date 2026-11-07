@@ -4,7 +4,7 @@
 
 **Goal:** 结算第④步（①②③走完后自动出现，无需用户操作）：从自己过去有效场次随机抽一条，以「过去的你」卡片展示日期 + 任务原文 + 感想（无感想只显示任务原文）；排除本场与当天所有场次；无历史时只显示一句「等待宇宙的讯息」；点击卡片跳对应日期记录（P8 填详情，本计划链接到既有 `/records` 占位路由）。
 
-**Architecture:** 后端新增 `GET /api/review/random`：候选池 = 当前用户 `status IN ('completed','settled')` 且归属日（`started_at` 日期）< 今天的会话，排除 query 传入的本场 id；`ORDER BY random() LIMIT 1`，left join Reflection 与 DayTask。前端替换 P4 占位 `StepReview.tsx`（props 契约不变）。
+**Architecture:** 后端新增 `GET /api/review/random`：候选池 = 当前用户 `status IN ('completed','settled')` 且归属日（`cast(func.timezone("Asia/Shanghai", Session.started_at), Date)`）< 今天的会话，排除 query 传入的本场 id；`ORDER BY random() LIMIT 1`，left join Reflection 与 DayTask。前端替换 P4 占位 `StepReview.tsx`（props 契约不变）。
 
 **Tech Stack:** FastAPI + SQLAlchemy；React 18。
 

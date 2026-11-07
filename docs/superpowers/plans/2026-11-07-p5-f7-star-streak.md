@@ -19,7 +19,7 @@
 
 ## Global Constraints
 
-- 同 P1 全部；另：亮度只升不降；无效场次（discarded）对 stars/streak 零贡献；所有「今天」判定走 `Clock`（Asia/Shanghai）；归属日一律取 `started_at` 日期；有效场次 = `status IN ('completed','settled') AND ended_at IS NOT NULL`，discarded 与进行中场次一律排除。
+- 同 P1 全部；另：亮度只升不降；无效场次（discarded）对 stars/streak 零贡献；所有「今天」判定走 `Clock`（Asia/Shanghai）；归属日一律取 `started_at` 日期，统一表达式 `cast(func.timezone("Asia/Shanghai", Session.started_at), Date)`（禁止裸 cast）；有效场次 = `status IN ('completed','settled') AND ended_at IS NOT NULL`，discarded 与进行中场次一律排除。
 - 星星/连续天数只在服务端计算，前端不做任何天数推算。
 
 ## Review Focus
