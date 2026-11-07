@@ -242,7 +242,24 @@ cd frontend; npm run lint; npm run build
 
 ## 8. 执行结果、未验证项和遗留问题
 
-（实现完成后回填；Task 1 尚未实现。）
+### 已验证（测试已运行通过）
+
+- 后端全量 **181 passed**：`test_letter_send.py` 23 项（验收 1–17）、`test_letter_settle.py` / `test_seed.py` 回归、`test_architecture.py` 棘轮（验收 18、20、21）。
+- 迁移：测试库 `drop schema → upgrade head → downgrade base → upgrade head` 双向通过；`alembic check` 无漂移；开发库已升级到 `c579173eb8f8`。
+- 前端：`npm run lint` 0 errors（仅既有 `button.tsx` fast-refresh 警告）、`npm run build` 通过（验收 19）。
+- 端到端演示（三服务同启 + reset seed）：小明学习中，小美投 → `delivered`，小刚投 → 满 3 `rejected_full` 且发出记录标「未送达」；小刚改寄 → `delivered`（拒收不消耗机会）；小刚同场再投 → `already_sent`；小明信箱满 3、新信 `focused_delivery=True`；小明 `summary.received_during_session=1`（窗口内真实计数）；③收藏 1（进历史）、放弃 2（不进历史）→ inbox 清空、history 仅收藏那 1 封（验收 4、5、9、13、14、16、19 实机验证）。
+
+### 未验证项
+
+- 验收 7 并发只覆盖双连接服务层（`test_concurrent_send_only_one_succeeds`），未做真实双 HTTP 客户端压测——Demo 单客户端，行锁已由测试钉住。
+- 验收 17 跨午夜失效用 `FixedClock` 注入钉住（测试级），未在实机上等待真实 24:00。
+- `/mailbox` 页与结算②③的浏览器端 UI 走查未用 Playwright 截图——交互逻辑与后端已分别经 lint/build 与 API 端到端验证。
+
+### 遗留问题
+
+- 首页信箱门槛在「专注进行中已满 5 分钟但未结束」时 `today.level` 仍为 0（P5 口径），此时用户在专注页，不影响演示（见 §6.3 已知边界）。
+- 收件人不禁止寄给自己（F6 未规定）；如需禁止后续加一条校验。
+- 演示编排中为凑「有效已结束会话」用了 SQL 直改 `started_at/ended_at`（演示加速，非业务路径）；真实场景由 `session_min_seconds` 阈值与 `/end` 正常驱动。
 
 ---
 
