@@ -61,6 +61,7 @@ function formatShortBy(shortBySec: number): string {
 // 结束唯一入口是 POST /sessions/{id}/end（有效进结算、无效提示差额后回首页）。
 export default function FocusPage() {
   const userId = useAppStore((s) => s.userId)
+  const setCurrentSessionId = useAppStore((s) => s.setCurrentSessionId)
   const navigate = useNavigate()
   const clock = useServerClock()
 
@@ -104,11 +105,13 @@ export default function FocusPage() {
         setMaxSeconds(res.data.session_max_seconds)
         const current = res.data.session
         if (current === null) {
+          setCurrentSessionId(null)
           leavingRef.current = true
           navigate("/")
           return
         }
         setSession(current)
+        setCurrentSessionId(current.id)
         // 180 分钟封顶或他处已结束：直接去结算，不再停留计时
         if (current.ended_at !== null) {
           leavingRef.current = true
@@ -124,7 +127,7 @@ export default function FocusPage() {
     return () => {
       cancelled = true
     }
-  }, [userId, navigate])
+  }, [userId, navigate, setCurrentSessionId])
 
   // 1 秒重渲染，让「服务端当前时间 − started_at」持续递增
   useEffect(() => {
@@ -153,8 +156,12 @@ export default function FocusPage() {
           if (leavingRef.current || useAppStore.getState().userId !== accountId) return
           setMaxSeconds(res.data.session_max_seconds)
           const current = res.data.session
-          if (current === null) return
+          if (current === null) {
+            setCurrentSessionId(null)
+            return
+          }
           setSession(current)
+          setCurrentSessionId(current.id)
           if (current.ended_at !== null) {
             leavingRef.current = true
             navigate("/settle")
@@ -165,7 +172,7 @@ export default function FocusPage() {
         })
     }, POLL_INTERVAL_MS)
     return () => window.clearInterval(id)
-  }, [userId, navigate])
+  }, [userId, navigate, setCurrentSessionId])
 
   // 派生正计时（服务端当前时间 − started_at），供封顶判定与渲染共用
   const startedAtMs = session === null ? null : Date.parse(session.started_at)
@@ -187,8 +194,12 @@ export default function FocusPage() {
         if (leavingRef.current || useAppStore.getState().userId !== accountId) return
         setMaxSeconds(res.data.session_max_seconds)
         const current = res.data.session
-        if (current === null) return
+        if (current === null) {
+          setCurrentSessionId(null)
+          return
+        }
         setSession(current)
+        setCurrentSessionId(current.id)
         if (current.ended_at !== null) {
           leavingRef.current = true
           navigate("/settle")
@@ -198,7 +209,7 @@ export default function FocusPage() {
         // 补发失败时下一秒再试，仍由 15s 轮询兜底
         capTriggeredRef.current = false
       })
-  }, [elapsedSec, maxSeconds, session, userId, navigate])
+  }, [elapsedSec, maxSeconds, session, userId, navigate, setCurrentSessionId])
 
   const handleEnd = async () => {
     if (!session || ending) return

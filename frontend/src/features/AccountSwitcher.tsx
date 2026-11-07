@@ -12,8 +12,17 @@ interface DemoUser {
 export default function AccountSwitcher() {
   const userId = useAppStore((s) => s.userId)
   const setUserId = useAppStore((s) => s.setUserId)
+  const setCurrentSessionId = useAppStore((s) => s.setCurrentSessionId)
+  const setSettleStep = useAppStore((s) => s.setSettleStep)
   const [users, setUsers] = useState<DemoUser[]>([])
   const [error, setError] = useState<string | null>(null)
+
+  // 切账号先清空上一账号的会话/结算进度，避免结算页拉到旧账号的会话
+  const handleSwitch = (nextUserId: number) => {
+    setCurrentSessionId(null)
+    setSettleStep(0)
+    setUserId(nextUserId)
+  }
 
   useEffect(() => {
     apiClient
@@ -30,7 +39,7 @@ export default function AccountSwitcher() {
           key={user.id}
           size="sm"
           variant={user.id === userId ? "default" : "outline"}
-          onClick={() => setUserId(user.id)}
+          onClick={() => handleSwitch(user.id)}
         >
           {user.name}
         </Button>

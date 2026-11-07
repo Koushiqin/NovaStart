@@ -72,10 +72,10 @@ async def test_reflection_over_200_422(client): ...
 - Create: `frontend/src/features/settle/SettleSummary.tsx`、`StepReflection.tsx`、`StepDeliver.tsx`、`StepMailbox.tsx`、`StepReview.tsx`、`CosmicWhisper.tsx`
 
 **Interfaces:**
-- Consumes: 两个新端点 + `POST /api/settle/{id}/advance`；store `currentSessionId`。
+- Consumes: 两个新端点 + `POST /api/settle/{id}/advance`；`GET /api/sessions/current`（权威会话 id，`currentSessionId` 仅作快捷入口）。
 - Produces: 占位组件 props 契约（见头部 Produces）；P5 在 `SettleSummary` 预留的 star/streak 槽位填动画。
 
-- [ ] **Step 1:** 进入页面按 `currentSessionId` 拉 summary；`settle_step>=4` → 直接完成态（摘要 + CosmicWhisper）；否则渲染第 `settle_step+1` 步。
+- [ ] **Step 1:** 进入页面先 `GET /sessions/current` 取 session id（无会话回首页），再拉 summary；`settle_step>=4` → 直接完成态（摘要 + CosmicWhisper）；否则渲染第 `settle_step+1` 步。
 - [ ] **Step 2:** `SettleSummary`：「本次 X 分钟 · 今天累计 XX 分钟」+ starter 原话复述（不用「恭喜完成任务」类空话）；star/streak 槽位渲染 null 占位（P5 替换）。
 - [ ] **Step 3:** `StepReflection`：textarea（maxLength 200）+「提交感想」/「跳过」→ 提交或空白提交后 `onDone` 刷新 summary。
 - [ ] **Step 4:** 三个占位组件统一样式：标题 +「后续版本解锁」说明 +「跳过」按钮（`advance` 到下一步）；第 ④ 步完成后渲染 `CosmicWhisper` 文案 +「回到首页」+「再学一场」（`POST /api/sessions {task_id}` 成功后跳 `/focus`）。

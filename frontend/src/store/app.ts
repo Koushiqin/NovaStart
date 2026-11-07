@@ -26,9 +26,9 @@ export const useAppStore = create<AppState>()(
       setSettleStep: (settleStep) => set({ settleStep }),
     }),
     {
-      // 只持久化身份与当前会话；时钟偏移与结算进度每次会话重新计算，刷新后账号不回落默认
+      // 只持久化身份；当前会话每次由 GET /sessions/current 重新确认，避免换库/换账号串号
       name: "novastart-user",
-      partialize: ({ userId, currentSessionId }) => ({ userId, currentSessionId }),
+      partialize: ({ userId }) => ({ userId }),
     }
   )
 )
