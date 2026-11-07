@@ -356,6 +356,7 @@ async def test_send_requires_valid_session(client, db_session, fixed_clock, case
 
 
 async def test_concurrent_send_only_one_succeeds(db_env, fixed_clock):
+    """确定性并发：外部事务先锁收件人 users 行；两笔投递必须先排队再串行计数。"""
     async with db_env() as setup:
         sender_a = await _make_user(setup, "小明")
         sender_b = await _make_user(setup, "小刚")
@@ -367,11 +368,18 @@ async def test_concurrent_send_only_one_succeeds(db_env, fixed_clock):
         for i in range(2):
             await _insert_letter(setup, recipient.id, content=f"旧信 {i}")
 
-    async with db_env() as s1, db_env() as s2:
-        results = await asyncio.gather(
-            letter_service.send(s1, sender_a.id, sid_a, "小美", fixed_clock),
-            letter_service.send(s2, sender_b.id, sid_b, "小美", fixed_clock),
-        )
+    async with db_env() as locker:
+        # 占住 users 行：修复后的 send 在计数前必须等这把锁；未加锁的实现不会等
+        await locker.execute(select(User.id).where(User.id == recipient.id).with_for_update())
+        async with db_env() as s1, db_env() as s2:
+            pending = asyncio.gather(
+                letter_service.send(s1, sender_a.id, sid_a, "小美", fixed_clock),
+                letter_service.send(s2, sender_b.id, sid_b, "小美", fixed_clock),
+            )
+            with pytest.raises(asyncio.TimeoutError):
+                await asyncio.wait_for(asyncio.shield(pending), timeout=2.0)
+            await locker.rollback()
+            results = await pending
 
     assert {r for r, _ in results} == {"delivered", "rejected_full"}
     async with db_env() as check:
