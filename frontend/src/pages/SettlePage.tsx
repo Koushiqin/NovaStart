@@ -85,8 +85,14 @@ export default function SettlePage() {
       const res = await apiClient.get<SettleSummaryData>(`/sessions/${sessionId}/summary`)
       if (useAppStore.getState().userId !== accountId) return
       setSummary(res.data)
-    } catch {
-      if (useAppStore.getState().userId === accountId) navigate("/")
+      setError(null)
+    } catch (e) {
+      if (useAppStore.getState().userId !== accountId) return
+      if (axios.isAxiosError(e) && e.response?.status === 404) {
+        navigate("/")
+        return
+      }
+      setError("结算信息加载失败，请稍后重试")
     }
   }
 
@@ -115,6 +121,9 @@ export default function SettlePage() {
           <>
             <SettleSummary data={summary} />
             {summary.settle_step >= 4 ? <CosmicWhisper /> : renderStep()}
+            {summary !== null && error !== null && (
+              <p className="text-center text-sm text-destructive">{error}</p>
+            )}
           </>
         ) : error !== null ? (
           <p className="text-center text-sm text-destructive">{error}</p>
