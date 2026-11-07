@@ -36,7 +36,7 @@ export default function SettleSummary({ data }: { data: SettleSummaryData }) {
           本次 {minutes(data.duration_sec)} 分钟
           <span className="text-muted-foreground">
             {" "}
-            · 今天累计 {minutes(data.today_total_sec)} 分钟
+            · 当日累计 {minutes(data.today_total_sec)} 分钟
           </span>
         </p>
 
@@ -62,7 +62,7 @@ export default function SettleSummary({ data }: { data: SettleSummaryData }) {
           </p>
         )}
 
-        {data.streak !== null && (
+        {data.streak !== null && data.streak.current > 0 && (
           <div className="space-y-1">
             <p className="text-3xl font-semibold tabular-nums">
               连续 {data.streak.current} 天
