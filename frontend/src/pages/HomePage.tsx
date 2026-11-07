@@ -163,7 +163,7 @@ export default function HomePage() {
                 <SplitEditor
                   task={task}
                   saving={busy === "save"}
-                  titleChanged={input.trim() !== task.raw_text}
+                  titleChanged={input.trim().length > 0 && input.trim() !== task.raw_text}
                   onUpdate={handleUpdate}
                 />
               )}
