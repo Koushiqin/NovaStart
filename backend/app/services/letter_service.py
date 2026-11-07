@@ -115,6 +115,18 @@ async def send(
     # 锁顺序统一为 users 行 → letters 行，dismiss/favorite 不锁 users，无环。
     await db.scalar(select(User.id).where(User.id == recipient.id).with_for_update())
 
+    # 拿锁后重查幂等键：并发重试的后来者在锁前可能读到无键，
+    # 等锁期间对方已提交，此时应返回 already_sent 而非走到拒收分支。
+    if (
+        await db.scalar(
+            select(ActionLog.id).where(
+                ActionLog.session_id == session_id, ActionLog.action_type == "deliver"
+            )
+        )
+        is not None
+    ):
+        return "already_sent", None
+
     # 行锁锁住收件人全部已投递且未处理、未过期的信，并发投递时串行化计数
     unhandled = (
         await db.execute(

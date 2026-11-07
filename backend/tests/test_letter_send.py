@@ -758,3 +758,37 @@ async def test_duplicate_recipient_name_picks_smallest_id(
     letter = await db_session.scalar(select(Letter).where(Letter.session_id == sid))
     assert letter.user_id == 900000
 
+
+async def test_concurrent_retry_near_capacity_still_already_sent(
+    db_env, fixed_clock
+):
+    """收件人已有 2 封有效未处理信时，同场并发重试不得走到拒收分支。"""
+    async with db_env() as setup:
+        sender = await _make_user(setup, "小明")
+        recipient = await _make_user(setup, "小美")
+        sid, _ = await _seed_session(setup, sender.id)
+        for i in range(2):
+            await _insert_letter(setup, recipient.id, content=f"旧信 {i}")
+
+    async with db_env() as s1, db_env() as s2:
+        results = await asyncio.gather(
+            letter_service.send(s1, sender.id, sid, "小美", fixed_clock),
+            letter_service.send(s2, sender.id, sid, "小美", fixed_clock),
+        )
+
+    assert sorted(r for r, _ in results) == ["already_sent", "delivered"]
+    async with db_env() as check:
+        letters = list(
+            (await check.scalars(select(Letter).where(Letter.session_id == sid))).all()
+        )
+        assert len(letters) == 1
+        assert letters[0].status == "delivered"
+        assert (
+            await check.scalar(
+                select(func.count())
+                .select_from(Letter)
+                .where(Letter.status == "undelivered")
+            )
+            == 0
+        )
+
