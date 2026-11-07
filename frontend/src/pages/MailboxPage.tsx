@@ -70,6 +70,8 @@ export default function MailboxPage() {
         : undefined
       if (code === "LETTER_ALREADY_HANDLED") {
         setError("这封信已处理，不能再收藏")
+        // 该信已在别处被处理：同步刷新，避免本页留下点不动的陈旧卡片
+        await refresh()
       } else if (code === "LETTER_EXPIRED" || (axios.isAxiosError(e) && e.response?.status === 409)) {
         setError("这封信已经过了一天")
         await refresh()
