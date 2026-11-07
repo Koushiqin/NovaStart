@@ -707,3 +707,18 @@ async def test_concurrent_deliver_same_session_idempotent(db_env, fixed_clock):
             == 1
         )
 
+
+async def test_retry_deliver_with_overlong_content_returns_already_sent(
+    client, db_session, fixed_clock
+):
+    sender = await _make_user(db_session, "小明")
+    await _make_user(db_session, "小美")
+    sid, _ = await _seed_session(db_session, sender.id, raw_text="长" * 201)
+    db_session.add(ActionLog(session_id=sid, action_type="deliver"))
+    await db_session.commit()
+
+    resp = await _send(client, sender.id, sid, "小美")
+
+    assert resp.status_code == 200
+    assert resp.json()["result"] == "already_sent"
+

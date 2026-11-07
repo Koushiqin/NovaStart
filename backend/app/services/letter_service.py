@@ -95,8 +95,8 @@ async def send(
     if recipient is None:
         return "rejected_unknown", None
 
-    text = await _letter_content(db, session)
-
+    # 幂等键先于正文校验：已投递场次的重试直接返回 already_sent，
+    # 不因历史原文超长而得到 422。
     already = await db.scalar(
         select(ActionLog.id).where(
             ActionLog.session_id == session_id, ActionLog.action_type == "deliver"
@@ -104,6 +104,8 @@ async def send(
     )
     if already is not None:
         return "already_sent", None
+
+    text = await _letter_content(db, session)
 
     # 先锁收件人 users 行：FOR UPDATE 只锁已存在的 letters 行，锁不住并发插入的幻影行；
     # 锁顺序统一为 users 行 → letters 行，dismiss/favorite 不锁 users，无环。
