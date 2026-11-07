@@ -98,4 +98,31 @@ cd frontend; npm run lint; npm run build
 
 ## 8. 执行结果、未验证项和遗留问题
 
-（实现完成后回填。）
+### 8.1 已运行通过
+
+| 项目 | 命令 | 结果 |
+|---|---|---|
+| 后端全量测试（含新增 `test_user_header.py` 6 条、`test_clock.py` 新增 1 条） | `cd backend; .venv\Scripts\python.exe -m pytest -q` | 73 passed |
+| 架构棘轮（含在上面的全量测试内） | `.venv\Scripts\python.exe -m pytest tests/test_architecture.py` | 52 passed |
+| 前端 lint | `cd frontend; npm run lint` | 0 error + `button.tsx` 1 既有 warning |
+| 前端构建 | `cd frontend; npm run build` | `tsc -b` + vite build 通过 |
+
+浏览器端到端（Playwright，前端 dev + 后端 8000 + PG 实库）：
+
+1. 顶部常驻「当前账号」+ 小明 / 小美 / 小刚 三个按钮，账号列表来自 `GET /api/users` — 通过。
+2. 点选账号后按钮高亮切换 — 通过。
+3. 点「建示例任务并开场」成功建任务 + 开 session（`X-User-Id` 由拦截器注入，无 body `user_id`）— 通过。
+4. 切到小美后再建任务，高亮不跳回小明，数据落在小美账号（DB 核对：`day_tasks` 小明 id=32、小美 id=33 各归属正确）— 通过。
+5. 刷新浏览器后选中账号保持（`localStorage` key `novastart-user`）— 通过。
+
+### 8.2 验证中发现并修复的问题
+
+- `/dev/reset-seed` 每次重建账号导致 id 递增，前端持久化的 `userId` 刷新后匹配不到账号（验收条件 4 失败）。已改为按名字复用三个固定演示账号（id 稳定），并新增回归测试 `test_reset_seed_keeps_demo_user_ids`。
+- `SmokePanel` 原逻辑每次点击都重置种子并强制切回首个账号，切换账号后无法体现数据归属。已改为「已选账号时用当前账号建任务；未选账号时才重置种子并选第一个」。
+
+### 8.3 未验证项与遗留问题
+
+- Docker Compose 交付链未复跑（本计划只改环境变量与请求层，未改镜像/启动方式；P3/P6 前置条件出现时再验）。
+- 时间偏移非 0 的端到端演示未跑（`demo_time_offset_seconds` 只做了单测）；且 `letter_service` 过期判定、`seed.reset_seed` 的「今天」、`/health` 的 `server_time` 仍用真实时间，不随偏移变化 —— 后续时间旅行演示若依赖前端时钟校准或信件过期，需要回补这三处。
+- 首次访问（localStorage 为空）不自动选默认账号，需点选；P2 正式首页若有「默认身份」需求再补。
+- 前端其余页面（记录、信箱）仍为占位页，账号切换后的数据整体切换只在 SmokePanel 路径上验证。
