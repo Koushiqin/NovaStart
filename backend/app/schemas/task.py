@@ -2,7 +2,6 @@ from pydantic import BaseModel
 
 
 class TaskCreate(BaseModel):
-    user_id: int
     raw_text: str
 
 

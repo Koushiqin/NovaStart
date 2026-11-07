@@ -52,7 +52,11 @@ async def _make_user(db_session: AsyncSession) -> int:
 
 
 async def _make_task(client: AsyncClient, user_id: int, text: str = "读完第三章并做习题") -> int:
-    resp = await client.post("/api/tasks", json={"user_id": user_id, "raw_text": text})
+    resp = await client.post(
+        "/api/tasks",
+        json={"raw_text": text},
+        headers={"X-User-Id": str(user_id)},
+    )
     assert resp.status_code == 200
     return resp.json()["task_id"]
 
@@ -60,7 +64,11 @@ async def _make_task(client: AsyncClient, user_id: int, text: str = "读完第�
 async def test_create_task_returns_mock_split_result(client, db_session):
     user_id = await _make_user(db_session)
 
-    resp = await client.post("/api/tasks", json={"user_id": user_id, "raw_text": "读完第三章并做习题"})
+    resp = await client.post(
+        "/api/tasks",
+        json={"raw_text": "读完第三章并做习题"},
+        headers={"X-User-Id": str(user_id)},
+    )
 
     assert resp.status_code == 200
     data = resp.json()
@@ -74,12 +82,16 @@ async def test_create_session_then_current_reports_elapsed(client, db_session):
     user_id = await _make_user(db_session)
     task_id = await _make_task(client, user_id)
 
-    resp = await client.post("/api/sessions", json={"user_id": user_id, "task_id": task_id})
+    resp = await client.post(
+        "/api/sessions",
+        json={"task_id": task_id},
+        headers={"X-User-Id": str(user_id)},
+    )
     assert resp.status_code == 200
     session_id = resp.json()["session_id"]
     assert resp.json()["server_time"]
 
-    resp = await client.get("/api/sessions/current", params={"user_id": user_id})
+    resp = await client.get("/api/sessions/current", headers={"X-User-Id": str(user_id)})
     data = resp.json()
     assert data["session"]["id"] == session_id
     assert data["session"]["status"] == "active"
@@ -90,7 +102,11 @@ async def test_create_session_then_current_reports_elapsed(client, db_session):
 async def test_current_marks_completed_after_five_minutes(client, db_session):
     user_id = await _make_user(db_session)
     task_id = await _make_task(client, user_id)
-    resp = await client.post("/api/sessions", json={"user_id": user_id, "task_id": task_id})
+    resp = await client.post(
+        "/api/sessions",
+        json={"task_id": task_id},
+        headers={"X-User-Id": str(user_id)},
+    )
     session_id = resp.json()["session_id"]
 
     # 直接把 started_at 改到 6 分钟前，模拟已超过最小专注时长
@@ -100,5 +116,5 @@ async def test_current_marks_completed_after_five_minutes(client, db_session):
     )
     await db_session.commit()
 
-    resp = await client.get("/api/sessions/current", params={"user_id": user_id})
+    resp = await client.get("/api/sessions/current", headers={"X-User-Id": str(user_id)})
     assert resp.json()["session"]["status"] == "completed"  # 懒计算生效

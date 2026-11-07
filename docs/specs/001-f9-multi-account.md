@@ -64,7 +64,7 @@ Demo 需要让评委在同一台电脑上看到「互相送信」「连续 7 天
 - **破坏性契约变更（内部 Demo 接口，已在 AGENTS.md 流程内确认）**：
   - `TaskCreate` 删除 `user_id` 字段；`SessionCreate` 删除 `user_id` 字段。
   - `GET /api/sessions/current`、`GET /api/letters/inbox`、`GET /api/letters/history` 删除 `user_id` query 参数。
-  - 所有 `/api/*` 业务请求必须携带 `X-User-Id: <int>`；缺失 → `422`；账号不存在 → `404 {code: "USER_NOT_FOUND", message}`。
+  - 所有 `/api/*` 业务请求必须携带 `X-User-Id: <int>`；缺失 → `422`；账号不存在 → `404 {"detail": {"code": "USER_NOT_FOUND", "message": ...}}`（沿用 FastAPI 的 `detail` 包封，未新增全局异常处理器）。
 - 新增：`GET /api/users` → `{users: [{id, name}], server_time}`（无需请求头，按 id 升序）。
 - 新增配置：`DEMO_TIME_OFFSET_SECONDS`（默认 0，单位秒，可负）；仅影响 `Clock` 的「当前时间」，不批量修改历史时间戳。
 - 表结构：无变更，无新迁移。`users` 表由种子数据填充 3 行。

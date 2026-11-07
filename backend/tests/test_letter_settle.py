@@ -84,7 +84,7 @@ async def test_inbox_caps_at_three_unhandled(client, db_session):
         sid = await _make_session_row(db_session, user_id)
         await letter_service.deliver(db_session, user_id, sid, f"第 {i + 1} 封信")
 
-    resp = await client.get("/api/letters/inbox", params={"user_id": user_id})
+    resp = await client.get("/api/letters/inbox", headers={"X-User-Id": str(user_id)})
 
     assert resp.status_code == 200
     assert len(resp.json()["letters"]) == 3  # 第 4 封被丢弃
@@ -118,7 +118,7 @@ async def test_inbox_excludes_expired_letters(client, db_session):
     )
     await db_session.commit()
 
-    resp = await client.get("/api/letters/inbox", params={"user_id": user_id})
+    resp = await client.get("/api/letters/inbox", headers={"X-User-Id": str(user_id)})
     ids = [l["id"] for l in resp.json()["letters"]]
     assert letter.id not in ids
 
@@ -128,8 +128,12 @@ async def test_favorite_is_idempotent(client, db_session):
     sid = await _make_session_row(db_session, user_id)
     letter = await letter_service.deliver(db_session, user_id, sid, "可收藏的信")
 
-    r1 = await client.post(f"/api/letters/{letter.id}/favorite")
-    r2 = await client.post(f"/api/letters/{letter.id}/favorite")
+    r1 = await client.post(
+        f"/api/letters/{letter.id}/favorite", headers={"X-User-Id": str(user_id)}
+    )
+    r2 = await client.post(
+        f"/api/letters/{letter.id}/favorite", headers={"X-User-Id": str(user_id)}
+    )
 
     assert r1.status_code == 200 and r2.status_code == 200
     assert r1.json()["letter"]["favorited"] is True
@@ -146,13 +150,14 @@ async def test_settle_advance_idempotent_and_monotonic(client, db_session):
     user_id = await _make_user(db_session)
     sid = await _make_session_row(db_session, user_id, status="completed")
 
-    r = await client.post(f"/api/settle/{sid}/advance", json={"to_step": 2})
+    headers = {"X-User-Id": str(user_id)}
+    r = await client.post(f"/api/settle/{sid}/advance", json={"to_step": 2}, headers=headers)
     assert r.json()["settle_step"] == 2
-    r = await client.post(f"/api/settle/{sid}/advance", json={"to_step": 2})
+    r = await client.post(f"/api/settle/{sid}/advance", json={"to_step": 2}, headers=headers)
     assert r.json()["settle_step"] == 2  # 重复调用幂等
-    r = await client.post(f"/api/settle/{sid}/advance", json={"to_step": 3})
+    r = await client.post(f"/api/settle/{sid}/advance", json={"to_step": 3}, headers=headers)
     assert r.json()["settle_step"] == 3
-    r = await client.post(f"/api/settle/{sid}/advance", json={"to_step": 2})
+    r = await client.post(f"/api/settle/{sid}/advance", json={"to_step": 2}, headers=headers)
     assert r.json()["settle_step"] == 3  # 回退请求不生效
 
 
@@ -172,7 +177,7 @@ async def test_history_lazy_cleanup_keeps_latest_100(client, db_session):
         )
     await db_session.commit()
 
-    resp = await client.get("/api/letters/history", params={"user_id": user_id})
+    resp = await client.get("/api/letters/history", headers={"X-User-Id": str(user_id)})
 
     assert resp.status_code == 200
     letters = resp.json()["letters"]

@@ -9,10 +9,12 @@ from app.routers import letter as letter_router
 from app.routers import session as session_router
 from app.routers import settle as settle_router
 from app.routers import task as task_router
+from app.routers import user as user_router
 from app.seed import reset_seed
 
 app = FastAPI(title="NovaStart")
 
+app.include_router(user_router.router)
 app.include_router(task_router.router)
 app.include_router(session_router.router)
 app.include_router(letter_router.router)
