@@ -54,19 +54,30 @@ export default function MailboxPage() {
   // 过期信操作后端返回 409；统一刷新列表让该信从 inbox 消失
   const runLetterAction = async (letterId: number, run: () => Promise<unknown>) => {
     if (busyId !== null) return
+    // 账号快照：动作开始后若切了账号，错误文案不能写到新账号的页面
+    const accountId = useAppStore.getState().userId
+    if (accountId == null) return
+    const sameAccount = () => useAppStore.getState().userId === accountId
     setBusyId(letterId)
     setError(null)
     try {
       await run()
       await refresh()
     } catch (e) {
-      if (axios.isAxiosError(e) && e.response?.status === 409) {
+      if (!sameAccount()) return
+      const code = axios.isAxiosError(e)
+        ? (e.response?.data as { detail?: { code?: string } } | undefined)?.detail?.code
+        : undefined
+      if (code === "LETTER_ALREADY_HANDLED") {
+        setError("这封信已处理，不能再收藏")
+      } else if (code === "LETTER_EXPIRED" || (axios.isAxiosError(e) && e.response?.status === 409)) {
         setError("这封信已经过了一天")
         await refresh()
       } else {
         setError("操作失败，请稍后重试")
       }
     } finally {
+      // 只清本地忙碌态，不写任何账号数据：无条件清空，避免切账号后永久卡住按钮
       setBusyId(null)
     }
   }
