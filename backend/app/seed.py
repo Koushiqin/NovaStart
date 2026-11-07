@@ -119,7 +119,7 @@ async def reset_seed(session: AsyncSession, clock: Clock) -> list[User]:
 
     # 小明未处理信箱预置小美 2 封（正文取小美昨日感想），不走投递机会
     expires_at = datetime.combine(today + timedelta(days=1), time.min, tzinfo=SHANGHAI_TZ)
-    created_at = datetime.combine(today, time(12, 0), tzinfo=SHANGHAI_TZ)
+    created_at = clock.now() - timedelta(hours=1)
     for _ in range(2):
         session.add(
             Letter(

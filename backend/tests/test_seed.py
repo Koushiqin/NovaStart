@@ -1,10 +1,10 @@
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 
 import pytest
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from app.clock import Clock
+from app.clock import SHANGHAI_TZ, Clock
 from app.db import Base
 from app.models.day_task import DayTask
 from app.models.letter import Letter
@@ -77,6 +77,21 @@ async def test_reset_seed_generates_stars_and_streak(db_session: AsyncSession):
     assert (
         await db_session.scalar(select(Streak).where(Streak.user_id == xiaogang.id))
     ) is None
+
+
+async def test_reset_seed_letters_created_before_now(db_session: AsyncSession):
+    """种子信件 created_at 必须是相对注入时钟的过去时刻（不得是未来）。"""
+    real_now = datetime.now(SHANGHAI_TZ)
+    pinned = datetime.combine(real_now.date(), time(0, 30), tzinfo=SHANGHAI_TZ)
+    clock = Clock(offset_seconds=(pinned - real_now).total_seconds())
+
+    xiaoming, _, _ = await reset_seed(db_session, clock)
+
+    letters = (
+        await db_session.scalars(select(Letter).where(Letter.user_id == xiaoming.id))
+    ).all()
+    assert len(letters) == 2
+    assert all(letter.created_at <= clock.now() for letter in letters)
 
 
 async def test_reset_seed_prefills_mailbox(db_session: AsyncSession):
