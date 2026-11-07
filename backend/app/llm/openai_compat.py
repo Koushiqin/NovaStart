@@ -18,6 +18,21 @@ _SYSTEM_PROMPT = (
 )
 
 
+def _parse_payload(data: object) -> tuple[str, list[str]]:
+    """校验模型输出结构；类型不符一律抛 ValueError，由 split() 走 fallback。"""
+    if not isinstance(data, dict):
+        raise ValueError("split payload must be an object")
+    starter = data.get("starter_step")
+    steps = data.get("steps")
+    if (
+        not isinstance(starter, str)
+        or not isinstance(steps, list)
+        or not all(isinstance(s, str) for s in steps)
+    ):
+        raise ValueError("split payload has invalid types")
+    return starter, steps[:5]
+
+
 class OpenAICompatSplitter:
     """OpenAI 兼容接口拆分器（DeepSeek 等均可接入）。
 
@@ -79,6 +94,5 @@ class OpenAICompatSplitter:
             resp.raise_for_status()
             content = resp.json()["choices"][0]["message"]["content"]
 
-        data = json.loads(content)
-        steps = [str(s) for s in data["steps"]][:5]
-        return SplitResult(starter_step=str(data["starter_step"]), steps=steps, source="llm")
+        starter, steps = _parse_payload(json.loads(content))
+        return SplitResult(starter_step=starter, steps=steps, source="llm")

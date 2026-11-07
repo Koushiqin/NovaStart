@@ -1,8 +1,10 @@
 import time
 
+import pytest
+
 from app.llm.base import SplitResult, TaskSplitter
 from app.llm.mock import MockSplitter
-from app.llm.openai_compat import OpenAICompatSplitter
+from app.llm.openai_compat import OpenAICompatSplitter, _parse_payload
 
 
 class CountingSplitter:
@@ -57,3 +59,22 @@ async def test_openai_compat_timeout_falls_back_fast():
 
     assert result.source == "fallback"
     assert elapsed < 2.0  # 证明走了超时降级而非同步等待
+
+
+def test_parse_rejects_string_steps():
+    with pytest.raises(ValueError):
+        _parse_payload({"starter_step": "先打开资料", "steps": "打开资料"})
+
+
+def test_parse_rejects_non_string_step_item():
+    with pytest.raises(ValueError):
+        _parse_payload({"starter_step": "先打开资料", "steps": ["打开资料", 1]})
+
+
+def test_parse_truncates_to_five():
+    starter, steps = _parse_payload(
+        {"starter_step": "先打开资料", "steps": [f"步{i}" for i in range(7)]}
+    )
+
+    assert starter == "先打开资料"
+    assert len(steps) == 5
