@@ -220,7 +220,39 @@ cd frontend; npm run lint; npm run build
 
 ## 8. 执行结果、未验证项和遗留问题
 
-（实现完成后回填：跑了哪些命令、结果如何；哪些没验证、为什么；遗留问题及边界。区分「测试已编写」与「测试已运行通过」。）
+### 8.1 已运行通过的验证（2026-11-07）
+
+| 命令 / 动作 | 结果 |
+|---|---|
+| `backend: pytest -q` | **158 passed**（含 `test_progress.py` 16 条、`test_seed.py` 扩展断言、`test_architecture` 棘轮） |
+| `alembic check`（开发库） | `No new upgrade operations detected` |
+| 测试库 `downgrade base → upgrade head` | 双向通过（`2cfedebff490` 建/删 `stars`、`streaks`） |
+| `frontend: npm run lint` | 0 error（仅既有 `button.tsx` 1 条 react-refresh warning） |
+| `frontend: npm run build` | `tsc -b && vite build` 通过 |
+| 前端 `new Date(` Grep | 仅 `api/client.ts`、`hooks/useServerClock.ts`（验收 14 通过） |
+
+- 提交：`b707c45 feat(backend): stars and streak with recompute single write path`；`670ce35 feat(frontend): star wall and settle star animation`。
+- 测试已编写且已运行通过：验收条件 1–11 全部由 `test_progress.py` 覆盖；12 由 `test_seed.py` 覆盖；13 由 `test_architecture.py` 覆盖。
+
+### 8.2 演示验收（浏览器 + API，全部 PASS；验收 16）
+
+1. 三服务同启（PostgreSQL、`python -m app.main`、vite `localhost:5173`）后 `POST /dev/reset-seed`：小明（id=32）`GET /api/progress/summary` → `wall=30`、11-01…11-06 共 6 颗 Lv1、今天 `dim`、`streak=6/6`；浏览器首页显示 6 颗星与「6 天连续 · 最长 6 天」。
+2. 今天创建任务 → 分析 → 开始 → 为压缩演示时长把该会话 `started_at` 回拨 6 分钟（**演示数据调整，非产品代码**）→ `GET /current`（命中 5 分钟懒标记）→ `POST /end` 返回 `settled`、`duration=360`。
+3. 完成后 `today=6min/L1`、星星墙今天 L1、`streak=7/7`；浏览器首页 7 颗星与「7 天连续 · 最长 7 天」；`/settle` 显示金色星星、「连续 7 天」与「明天再来 5 分钟…」文案（截图 `homepage-streak-7.png`、`settle-page-streak-7.png`）。
+4. 演示结束后再次 `POST /dev/reset-seed`，恢复 6 天基线（同时删除本轮演示会话），当前账号回到 `streak=6/6`、今天 `dim`。
+
+### 8.3 未验证项
+
+- 结算星星动画「只播一次」：代码为 framer-motion 单次 `animate`（无 `loop`、无重复 trigger），截图确认了终态；未用逐帧工具量化确认。
+- 跨零点断签文案：`SessionSummary` 未暴露本场归属日，前端只能按 `was_reset` 判定，跨零点结算可能显示「从今天这 5 分钟开始」（Ruling 已记 P5 ledger）。
+- 180 封顶的浏览器端到端未单独演示（P3 已记遗留）：后端由单测覆盖，前端与 5 分钟共用 `ended_at` 检测路径。
+- 星星墙 30 天窗口外日期的 `broken/empty` 判定：实现按整表首颗星星日计算，窗口内四态由 `test_summary_wall_states` 覆盖，窗口外无独立用例。
+
+### 8.4 遗留问题与边界
+
+- 5 分钟里程碑时该场 `ended_at` 为空，按 §6.4 不算有效场次：里程碑只 +1 连续天数，星星要等有效结束/180 封顶后才点亮；专注进行中首页今天仍显示 `dim`（Ruling 已记 ledger）。
+- 累计完成天数按 `stars` 行数读侧统计，未在 `streaks` 冗余；P5 不展示，留给 P8。
+- 迁移只新增两张表，`downgrade` 逆序 drop 即可，无既有表改动与数据回填。
 
 ---
 
