@@ -145,7 +145,7 @@ async def end_session(
 
 async def get_settlement_summary(
     db: AsyncSession, session_id: int, user_id: int, clock: Clock
-) -> tuple[Session, DayTask, int, int | None, tuple[int, int, bool] | None, int] | None:
+) -> tuple[Session, DayTask, int, int | None, tuple[int, int, bool] | None, int, str] | None:
     """结算页数据源：本场有效会话、任务文案、归属日累计时长、本场星星与连续天数。
 
     可访问条件：本人、已结束（ended_at 非空）、status ∈ {completed, settled}；
@@ -200,4 +200,5 @@ async def get_settlement_summary(
         star.level if star else None,
         streak,
         int(received or 0),
+        attribution_day.isoformat(),
     )

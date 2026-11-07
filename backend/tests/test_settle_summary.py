@@ -150,12 +150,16 @@ async def _reflect(client: AsyncClient, session_id: int, user_id: int, content: 
 
 
 async def test_summary_fields(client, db_session, fixed_clock):
+    fixed_clock.set_now(datetime(2026, 11, 7, 12, 0, tzinfo=SHANGHAI_TZ))
     user_id = await _make_user(db_session)
-    sid = await _seed_session(db_session, user_id)
+    sid = await _seed_session(
+        db_session, user_id, started_at=datetime(2026, 11, 7, 9, 0, tzinfo=SHANGHAI_TZ)
+    )
 
     status_code, data = await _summary(client, sid, user_id)
 
     assert status_code == 200
+    assert data["attribution_date"] == "2026-11-07"
     assert data["duration_sec"] == 300
     assert data["today_total_sec"] == 300
     assert data["task_text"] == "读完第三章并做习题"
@@ -243,6 +247,21 @@ async def test_summary_attribution_day_across_midnight(
     status_code, data = await _summary(client, main, user_id)
 
     assert status_code == 200
+    assert data["today_total_sec"] == 300
+
+
+async def test_summary_attribution_date_across_midnight(client, db_session, fixed_clock):
+    """凌晨结算昨日开始的场次：日期标签取归属日，不取 clock.today()。"""
+    fixed_clock.set_now(datetime(2026, 11, 7, 0, 10, tzinfo=SHANGHAI_TZ))
+    user_id = await _make_user(db_session)
+    sid = await _seed_session(
+        db_session, user_id, started_at=datetime(2026, 11, 6, 23, 50, tzinfo=SHANGHAI_TZ)
+    )
+
+    status_code, data = await _summary(client, sid, user_id)
+
+    assert status_code == 200
+    assert data["attribution_date"] == "2026-11-06"
     assert data["today_total_sec"] == 300
 
 

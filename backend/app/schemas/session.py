@@ -47,6 +47,8 @@ class SessionSummary(BaseModel):
 
     duration_sec: int
     today_total_sec: int
+    # 归属日（ISO YYYY-MM-DD，上海时区、按 started_at）：累计口径不变，仅把「当日」显式化
+    attribution_date: str
     task_text: str
     starter_text: str
     settle_step: int

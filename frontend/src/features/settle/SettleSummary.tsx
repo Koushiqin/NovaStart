@@ -12,6 +12,7 @@ export interface StreakInfo {
 export interface SettleSummaryData {
   duration_sec: number
   today_total_sec: number
+  attribution_date: string
   task_text: string
   starter_text: string
   settle_step: number
@@ -26,7 +27,13 @@ function minutes(seconds: number): number {
   return Math.floor(seconds / 60)
 }
 
-// 三段式摘要：具体成果（本次时长 + 今天累计）、starter 原话复述，
+// 归属日 ISO（YYYY-MM-DD）→ 「M月D日」：跨零点结算时标签必须显示归属日，不能写「今天/当日」
+function dayLabel(iso: string): string {
+  const [, month, day] = iso.split("-")
+  return `${Number(month)}月${Number(day)}日`
+}
+
+// 三段式摘要：具体成果（本次时长 + 归属日累计）、starter 原话复述，
 // 以及 P5 填入的星星点亮动画与连续天数；无值时不伪造数字或文案。
 export default function SettleSummary({ data }: { data: SettleSummaryData }) {
   return (
@@ -36,7 +43,7 @@ export default function SettleSummary({ data }: { data: SettleSummaryData }) {
           本次 {minutes(data.duration_sec)} 分钟
           <span className="text-muted-foreground">
             {" "}
-            · 当日累计 {minutes(data.today_total_sec)} 分钟
+            · {dayLabel(data.attribution_date)}累计 {minutes(data.today_total_sec)} 分钟
           </span>
         </p>
 
