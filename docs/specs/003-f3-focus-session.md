@@ -129,8 +129,8 @@ P2 已完成「输入 → 分析 → 开始学习」链路：`POST /api/sessions
 
 - `elapsed_sec` 保持现有口径：`max(0, now - started_at)` 的整数秒，不封顶（180 后前端据 `ended_at` 跳转）。
 - 懒标记：
-  - `active` 且 `elapsed ≥ min` → `status="completed"`，不写 `ended_at` / `duration_sec`；
-  - `active` 且 `elapsed ≥ max` → `status="completed"`、`ended_at = started_at + max`、`duration_sec = max`。
+  - `ended_at IS NULL` 且 `elapsed ≥ max` → `status="completed"`、`ended_at = started_at + max`、`duration_sec = max`（对已置 `completed` 但未结束的会话同样生效，保证 5 分钟达成后继续学习到 180 分钟仍能自动结束）；
+  - 否则 `active` 且 `elapsed ≥ min` → `status="completed"`，不写 `ended_at` / `duration_sec`。
 
 ### 6.2 数据与迁移
 

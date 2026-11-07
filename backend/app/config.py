@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     llm_model: str = "deepseek-chat"
     clock_mode: str = "normal"
     demo_time_offset_seconds: int = 0
+    # 会话有效性阈值（秒）：默认 5 分钟 ~ 180 分钟；演示加速只调这两个值
+    session_min_seconds: int = 300
+    session_max_seconds: int = 10800
 
 
 settings = Settings()

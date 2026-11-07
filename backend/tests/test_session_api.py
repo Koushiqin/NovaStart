@@ -128,7 +128,10 @@ async def test_current_marks_completed_after_five_minutes(client, db_session):
     await db_session.commit()
 
     resp = await client.get("/api/sessions/current", headers={"X-User-Id": str(user_id)})
-    assert resp.json()["session"]["status"] == "completed"  # 懒计算生效
+    data = resp.json()["session"]
+    assert data["status"] == "completed"  # 懒计算生效
+    assert data["ended_at"] is None  # 里程碑只标记完成，计时继续
+    assert data["task_starter_step"]  # 专注页可直接从 current 取任务文案
 
 
 async def test_create_session_rejects_other_users_task(client, db_session):
