@@ -67,7 +67,7 @@ async def get_current_session(
     result = await db.execute(
         select(Session)
         .where(Session.user_id == user_id, Session.status.in_(["active", "completed"]))
-        .order_by(Session.started_at.desc())
+        .order_by(Session.started_at.desc(), Session.id.desc())
         .limit(1)
     )
     session = result.scalar_one_or_none()
