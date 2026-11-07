@@ -91,6 +91,8 @@
 
 全量验证：`backend/.venv/Scripts/python.exe -m pytest` → **189 passed**；`frontend` `npm run lint` → 0 error（1 条既有 `react-refresh` warning，`components/ui/button.tsx`）；`npm run build` → 成功。
 
+遗留收口轮（2026-11-08）：`backend/.venv/Scripts/python.exe -m pytest` → **192 passed**（新增 3 个用例）；架构棘轮 `test_architecture.py` → 65 passed；`frontend` `npm run lint` → 0 error（同上 1 条既有 warning）；`npm run build` → 成功。
+
 终审补修（独立审查发现）：`c223909` —— `already_sent` 判定在 users 行锁之前，收件人已有 2 封有效未处理信时同场并发重试会走到 `rejected_full` 并多写一条未送达记录；修法为拿锁后重查 deliver 幂等键。用例 `test_concurrent_retry_near_capacity_still_already_sent`（修复前 `['delivered','rejected_full']`）。
 
 | 项 | 状态 | commit | 对应测试 / 说明 |
@@ -111,11 +113,11 @@
 | 11-d 建行并发 | 已修复 | 2159d75 | 见遗留时序说明 |
 | 11-e 当前会话排序 | 已修复 | 2218343 | 与 `create_session` 的 `id.desc()` 一致 |
 
-### 遗留
+### 遗留（2026-11-08 收口状态）
 
-1. **T5 账号快照守卫无自动化测试**（前端无单测设施）：需人工手测——登录 A 账号进信箱页，加载中途切 B 账号，确认不出现 A 的信件。
-2. **T6 聚合口径保留**：「当日累计」仍指归属日（`started_at` 的上海时区自然日），跨零点场次会把前一天累计计入「当日」；本次只改文案，属接受口径。
-3. **T3 / T9d 并发时序**：测试无法注入屏障强制两事务同时进入临界区，用例通过不构成强保证的证据；正确性以代码结构（users 行锁先于计数快照 / savepoint + IntegrityError 转更新）为准，测试作回归。
-4. **前端操作链路错误文案**：`MailboxPage.runLetterAction` 的 `setError` / `setBusyId` 未加账号快照守卫（`refresh` 已守卫），切账号瞬间可能短暂串扰；另新增 409 `LETTER_ALREADY_HANDLED` 在 UI 仍复用「这封信已经过了一天」文案。inbox 只列未处理信，实际触发需跨标签竞态，低危。
-5. **`progress_service` 回退分支健壮性**：`except IntegrityError` 后的 `select` 无 None 兜底（READ COMMITTED 下实际不可达），且 `mark_day_completed` 的 `existed` 在回退后未刷新，跨日并发首次建行时 `was_reset` 可能误报 False。
+1. **T5 账号快照守卫无自动化测试** → 已收口（结构审查 + 人工手测口径）。`MailboxPage.refresh` 守卫保持；`runLetterAction` 已补同样的账号快照（`b90f30d`）。**不做自动化**：前端无单测设施且本轮不新增依赖（已人工确认）。人工手测 3 条（Slow 4G 切账号 / 双标签页放弃-收藏 / Offline 切账号）本轮执行环境无网络节流与离线开关，**待用户手测**。
+2. **T6 聚合口径保留** → 已收口：累计口径仍是归属日（`started_at` 的上海时区自然日），但改为显式返回 `attribution_date`（additive 契约扩展，已批准）并由结算页渲染「M月D日累计」，跨零点不再被读成「今天」。用例 `test_summary_attribution_date_across_midnight`（跨零点场次断言 `attribution_date == 2026-11-06` 且 `today_total_sec == 300`）先 RED（`KeyError: 'attribution_date'`）后 GREEN（`f0426a4`）；Spec 006 §6.5 已同步。
+3. **T3 / T9d 并发时序** → 已补确定性回归：`test_concurrent_send_only_one_succeeds` 改为「外部事务先锁 `users` 行 + `asyncio.wait_for` 断言必须先阻塞」，并做变异校验（注释掉 `letter_service.py` 的 `with_for_update()` → FAIL，恢复 → PASS）（`67ff9fd`）；新增 `_wait_for_ungranted_lock`（轮询 `pg_locks` 的 `granted=false`）+ `test_concurrent_first_mark_day_other_day_sets_was_reset` / `test_concurrent_first_mark_day_same_day_single_row`（`89f5f26`）。
+4. **前端操作链路错误文案** → 已修复：`runLetterAction` 动作开始时捕获 `accountId`，`catch` 内所有 `setError` 先比对账号；409 先判 `LETTER_ALREADY_HANDLED`（「这封信已处理，不能再收藏」），其余 409 仍显示「这封信已经过了一天」并刷新（`b90f30d`）。切账号不串扰的 UI 手测同上**待用户手测**。
+5. **`progress_service` 回退分支健壮性** → 已修复：两处 `except IntegrityError` 的回退 `select` 补 None 兜底（抛 `RuntimeError`）；`mark_day_completed` 回退后置 `existed = True`，跨日并发首次建行时 `was_reset` 不再误报 False（`89f5f26`）。
 

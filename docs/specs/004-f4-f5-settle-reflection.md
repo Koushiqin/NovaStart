@@ -37,7 +37,7 @@ P3 已把有效结束收敛到 `POST /api/sessions/{id}/end`：有效场次 `sta
 
 1. 有效结束的本人会话 → `GET /api/sessions/{id}/summary` 返回 `200`，含 `duration_sec`（库中时长）、`today_total_sec`、`task_text`、`starter_text`（当前采用版 starter）、`settle_step`、`status`、`received_during_session=0`、`star_level=null`、`streak=null`、`server_time`。
 2. `today_total_sec` 只累计有效且已结束的场次（`status ∈ {completed, settled}` 且 `ended_at IS NOT NULL`）：同账号当天另有一场 `discarded` → 不计入；另有一场仅达最短时长但未结束（`completed`、`ended_at IS NULL`）→ 不计入；本场计入。
-3. 归属日按 `started_at` 的 Asia/Shanghai 自然日计算，不用「当前日」：23:30 开始 / 00:30 开始两参数化场景下，`today_total_sec` 都等于该归属日已有有效时长 + 本场，跨零点不串日。
+3. 归属日按 `started_at` 的 Asia/Shanghai 自然日计算，不用「当前日」：23:30 开始 / 00:30 开始两参数化场景下，`today_total_sec` 都等于该归属日已有有效时长 + 本场，跨零点不串日；2026-11-08 起响应同时返回 `attribution_date`（该归属日 ISO 日期），结算页据此渲染「M月D日累计」。
 4. `discarded` 会话、`ended_at` 为空（`active` 或仅达里程碑的 `completed`）会话、他人会话、不存在的会话请求 summary/reflection → `404 {"detail": {"code": "SESSION_NOT_FOUND"}}`，不泄露他人会话是否存在。
 5. 第①步提交非空感想（≤200 字）→ `201`，`settle_step=1`；库中 `reflections` 恰好一条，`content` 为去首尾空白后的文本，`date` 等于会话 `started_at` 的 Asia/Shanghai 日期。
 6. 提交空串或纯空格 → `201`，`reflection=null`、`settle_step=1`；库中不新增 `reflections` 行（跳过语义，不报错）。
@@ -98,6 +98,7 @@ P3 已把有效结束收敛到 `POST /api/sessions/{id}/end`：有效场次 `sta
 |---|---|---|
 | `duration_sec` | int | 本场有效时长（库中 `sessions.duration_sec`） |
 | `today_total_sec` | int | 归属日累计：同账号、`status ∈ {completed, settled}`、`ended_at IS NOT NULL`、`cast(func.timezone("Asia/Shanghai", started_at), Date) == 本场归属日` 的 `duration_sec` 之和（含本场）；`discarded` 与未结束场次不计 |
+| `attribution_date` | str | 本场归属日（ISO `YYYY-MM-DD`，`started_at` 的 Asia/Shanghai 自然日）；结算页据此渲染「M月D日累计」，跨零点不显示「今天」（2026-11-08 additive 扩展，已批准） |
 | `task_text` | str | 本场任务当前采用版正文 `day_tasks.raw_text`（P6 信件正文回退用） |
 | `starter_text` | str | 本场任务当前采用版 `day_tasks.starter_step`（A21，结算页原话复述） |
 | `settle_step` | int | 0–4，已完成步数 |
