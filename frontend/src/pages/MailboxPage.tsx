@@ -25,16 +25,20 @@ export default function MailboxPage() {
 
   const refresh = useCallback(async () => {
     if (userId == null) return
+    // 账号快照：拉取中途切账号时丢弃过期响应，防止 A 的信件写入 B 的页面
+    const accountId = userId
     try {
       const [inboxRes, historyRes, outboxRes] = await Promise.all([
         apiClient.get<InboxResponse>("/letters/inbox"),
         apiClient.get<HistoryResponse>("/letters/history"),
         apiClient.get<OutboxResponse>("/letters/outbox"),
       ])
+      if (useAppStore.getState().userId !== accountId) return
       setInbox(inboxRes.data.letters)
       setHistory(historyRes.data.letters)
       setOutbox(outboxRes.data.letters)
     } catch {
+      if (useAppStore.getState().userId !== accountId) return
       setError("信箱加载失败，请稍后重试")
     }
   }, [userId])
