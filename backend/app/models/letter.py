@@ -11,9 +11,9 @@ class Letter(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     # user_id = 收件人；sender_id = 发件人（既有历史行可空）
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     sender_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), index=True)
-    session_id: Mapped[int | None] = mapped_column(ForeignKey("sessions.id"))
+    session_id: Mapped[int | None] = mapped_column(ForeignKey("sessions.id"), index=True)
     content: Mapped[str] = mapped_column(Text)
     # delivered | undelivered（被拒收的发出记录）
     status: Mapped[str] = mapped_column(
