@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.clock import Clock
+from app.clock import Clock, get_clock
 from app.db import engine, get_session
 from app.routers import letter as letter_router
 from app.routers import session as session_router
@@ -30,7 +30,7 @@ app.add_middleware(
 
 
 @app.get("/health")
-async def health() -> dict:
+async def health(clock: Clock = Depends(get_clock)) -> dict:
     """探活接口：区分「进程活着」与「DB 可连」，server_time 是前端校准时钟的唯一来源。"""
     try:
         async with engine.connect() as conn:
@@ -38,13 +38,16 @@ async def health() -> dict:
         db_status = "up"
     except Exception:
         db_status = "down"
-    return {"status": "ok", "server_time": Clock().now().isoformat(), "db": db_status}
+    return {"status": "ok", "server_time": clock.now().isoformat(), "db": db_status}
 
 
 @app.post("/dev/reset-seed")
-async def dev_reset_seed(session: AsyncSession = Depends(get_session)) -> dict:
+async def dev_reset_seed(
+    clock: Clock = Depends(get_clock),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
     """演示用：重置种子数据。Demo 项目无生产环境，固定挂载。"""
-    users = await reset_seed(session)
+    users = await reset_seed(session, clock)
     return {"ok": True, "users": [{"id": u.id, "name": u.name} for u in users]}
 
 

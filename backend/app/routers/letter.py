@@ -17,7 +17,7 @@ async def inbox(
     db: AsyncSession = Depends(get_session),
 ) -> InboxResponse:
     """未处理且未过期的信件列表（懒失效）。"""
-    letters = await letter_service.get_inbox(db, user_id)
+    letters = await letter_service.get_inbox(db, user_id, clock)
     return InboxResponse(
         letters=[LetterOut.model_validate(l) for l in letters],
         server_time=clock.now().isoformat(),

@@ -15,12 +15,10 @@ HISTORY_LIMIT = 100
 
 
 async def deliver(
-    db: AsyncSession, user_id: int, session_id: int, content: str
+    db: AsyncSession, user_id: int, session_id: int, content: str, clock: Clock
 ) -> Letter | None:
     """投递一封信。同一 session 只投一次（ActionLog 唯一约束）；
     用户未处理信件 >= 3 封时丢弃不投。返回 Letter 或 None（未投递）。"""
-    clock = Clock()
-
     # 幂等门：先占 (session_id, "deliver") 这个幂等键，占不到说明已投过
     try:
         async with db.begin_nested():
@@ -53,14 +51,14 @@ async def deliver(
     return letter
 
 
-async def get_inbox(db: AsyncSession, user_id: int) -> list[Letter]:
+async def get_inbox(db: AsyncSession, user_id: int, clock: Clock) -> list[Letter]:
     """未处理且未过期的信件（懒失效：过期判断在查询条件里，不后台清扫）。"""
     result = await db.execute(
         select(Letter)
         .where(
             Letter.user_id == user_id,
             Letter.handled == False,  # noqa: E712
-            Letter.expired_at > Clock().now(),
+            Letter.expired_at > clock.now(),
         )
         .order_by(Letter.created_at.desc())
     )

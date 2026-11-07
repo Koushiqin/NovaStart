@@ -60,7 +60,7 @@ async def _add_day_history(
     )
 
 
-async def reset_seed(session: AsyncSession) -> list[User]:
+async def reset_seed(session: AsyncSession, clock: Clock) -> list[User]:
     """清库并插入演示数据：3 个固定演示账号。
 
     小明 = 连续 6 天历史；小美 = 1 条历史；小刚 = 空（用于演示全新账号）。
@@ -83,7 +83,7 @@ async def reset_seed(session: AsyncSession) -> list[User]:
         users.append(user)
     await session.flush()  # 新建账号拿到自增 id
 
-    today = Clock().today()
+    today = clock.today()
     xiaoming, xiaomei, xiaogang = users
 
     for n in range(1, 7):

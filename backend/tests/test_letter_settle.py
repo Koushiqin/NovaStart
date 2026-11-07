@@ -6,6 +6,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from app.clock import Clock
 from app.db import Base, get_session
 from app.main import app
 from app.models.action_log import ActionLog
@@ -94,7 +95,7 @@ async def test_inbox_caps_at_three_unhandled(client, db_session):
     user_id = await _make_user(db_session)
     for i in range(4):
         sid = await _make_session_row(db_session, user_id)
-        await letter_service.deliver(db_session, user_id, sid, f"第 {i + 1} 封信")
+        await letter_service.deliver(db_session, user_id, sid, f"第 {i + 1} 封信", Clock())
 
     resp = await client.get("/api/letters/inbox", headers={"X-User-Id": str(user_id)})
 
@@ -106,8 +107,8 @@ async def test_deliver_same_session_only_once(client, db_session):
     user_id = await _make_user(db_session)
     sid = await _make_session_row(db_session, user_id)
 
-    first = await letter_service.deliver(db_session, user_id, sid, "内容A")
-    second = await letter_service.deliver(db_session, user_id, sid, "内容B")
+    first = await letter_service.deliver(db_session, user_id, sid, "内容A", Clock())
+    second = await letter_service.deliver(db_session, user_id, sid, "内容B", Clock())
 
     assert first is not None
     assert second is None  # ActionLog 唯一约束挡住重复投递
@@ -120,7 +121,7 @@ async def test_deliver_same_session_only_once(client, db_session):
 async def test_inbox_excludes_expired_letters(client, db_session):
     user_id = await _make_user(db_session)
     sid = await _make_session_row(db_session, user_id)
-    letter = await letter_service.deliver(db_session, user_id, sid, "会过期的信")
+    letter = await letter_service.deliver(db_session, user_id, sid, "会过期的信", Clock())
 
     # 把 expired_at 改到昨天，模拟已过期
     await db_session.execute(
@@ -138,7 +139,7 @@ async def test_inbox_excludes_expired_letters(client, db_session):
 async def test_favorite_is_idempotent(client, db_session):
     user_id = await _make_user(db_session)
     sid = await _make_session_row(db_session, user_id)
-    letter = await letter_service.deliver(db_session, user_id, sid, "可收藏的信")
+    letter = await letter_service.deliver(db_session, user_id, sid, "可收藏的信", Clock())
 
     r1 = await client.post(
         f"/api/letters/{letter.id}/favorite", headers={"X-User-Id": str(user_id)}
@@ -248,3 +249,15 @@ async def test_history_lazy_cleanup_keeps_latest_100(client, db_session):
     remaining = {l["content"] for l in letters}
     for i in range(5):
         assert f"历史 {i}" not in remaining  # 最旧 5 条已被删除
+
+
+async def test_inbox_expiry_uses_injected_clock(db_session):
+    user_id = await _make_user(db_session)
+    sid = await _make_session_row(db_session, user_id)
+
+    now = Clock()
+    await letter_service.deliver(db_session, user_id, sid, "今天的信", now)
+    assert len(await letter_service.get_inbox(db_session, user_id, now)) == 1
+
+    later = Clock(offset_seconds=86400)
+    assert await letter_service.get_inbox(db_session, user_id, later) == []
