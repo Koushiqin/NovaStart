@@ -107,8 +107,8 @@ async def test_task_owner_comes_from_header(client: AsyncClient, db_session: Asy
     resp_b = await client.post(
         "/api/tasks", json={"raw_text": "乙的任务"}, headers=_header(user_b)
     )
-    assert resp_a.status_code == 200
-    assert resp_b.status_code == 200
+    assert resp_a.status_code == 201
+    assert resp_b.status_code == 201
 
     rows = (await db_session.scalars(select(DayTask).order_by(DayTask.id))).all()
     assert [(r.user_id, r.raw_text) for r in rows] == [
@@ -124,7 +124,7 @@ async def test_current_session_not_visible_across_accounts(
     user_b = await _make_user(db_session, "账号乙")
     task = await client.post("/api/tasks", json={"raw_text": "甲的任务"}, headers=_header(user_a))
     session = await client.post(
-        "/api/sessions", json={"task_id": task.json()["task_id"]}, headers=_header(user_a)
+        "/api/sessions", json={"task_id": task.json()["task"]["id"]}, headers=_header(user_a)
     )
     assert session.status_code == 200
 

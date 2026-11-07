@@ -1,7 +1,9 @@
 from fastapi import Depends, Header, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.db import get_session
+from app.llm import TaskSplitter, get_splitter
 from app.services import user_service
 
 
@@ -20,3 +22,8 @@ async def get_current_user_id(
             detail={"code": "USER_NOT_FOUND", "message": f"账号 {x_user_id} 不存在"},
         )
     return x_user_id
+
+
+def get_task_splitter() -> TaskSplitter:
+    """任务拆分器依赖：按配置选择实现；测试可覆盖为计数或抛异常实现。"""
+    return get_splitter(settings)

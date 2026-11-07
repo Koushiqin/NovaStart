@@ -52,21 +52,32 @@ async def _make_user(db_session: AsyncSession) -> int:
 
 
 async def _make_task(client: AsyncClient, user_id: int, text: str = "读完第三章并做习题") -> int:
-    resp = await client.post(
+    created = await client.post(
         "/api/tasks",
         json={"raw_text": text},
         headers={"X-User-Id": str(user_id)},
     )
-    assert resp.status_code == 200
-    return resp.json()["task_id"]
+    assert created.status_code == 201
+    task_id = created.json()["task"]["id"]
+    analyzed = await client.post(
+        f"/api/tasks/{task_id}/analyze", headers={"X-User-Id": str(user_id)}
+    )
+    assert analyzed.status_code == 200
+    return task_id
 
 
 async def test_create_task_returns_mock_split_result(client, db_session):
     user_id = await _make_user(db_session)
 
-    resp = await client.post(
+    created = await client.post(
         "/api/tasks",
         json={"raw_text": "读完第三章并做习题"},
+        headers={"X-User-Id": str(user_id)},
+    )
+    assert created.status_code == 201
+
+    resp = await client.post(
+        f"/api/tasks/{created.json()['task']['id']}/analyze",
         headers={"X-User-Id": str(user_id)},
     )
 
@@ -74,7 +85,7 @@ async def test_create_task_returns_mock_split_result(client, db_session):
     data = resp.json()
     assert data["source"] == "mock"
     assert data["starter_step"]
-    assert 1 <= len(data["steps"]) <= 5
+    assert 1 <= len(data["steps"]) <= 3
     assert data["server_time"]
 
 
