@@ -15,3 +15,6 @@ dist/
 .vite/
 .DS_Store
 Thumbs.db
+
+# SDD 执行记录（本地过程产物）
+.superpowers/
