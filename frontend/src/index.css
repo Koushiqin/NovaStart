@@ -3,31 +3,37 @@
 @tailwind utilities;
 
 @layer base {
+  /* 深空紫黑：单套深色 token，html 常驻 class="dark"（无明暗切换） */
   :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
+    --background: oklch(0.15 0.025 285);
+    --surface-1: oklch(0.21 0.032 285);
+    --surface-2: oklch(0.26 0.038 285);
+    --foreground: oklch(0.96 0.01 285);
+    --muted: oklch(0.24 0.028 285);
+    --muted-foreground: oklch(0.70 0.02 285);
+    --border: oklch(0.34 0.03 285 / 0.55);
+    --input: oklch(0.33 0.03 285 / 0.6);
+    --primary: oklch(0.82 0.13 305);
+    --primary-foreground: oklch(0.16 0.02 285);
+    --secondary: oklch(0.25 0.03 285);
+    --secondary-foreground: oklch(0.96 0.01 285);
+    --accent: oklch(0.29 0.04 290);
+    --accent-foreground: oklch(0.96 0.01 285);
+    --destructive: oklch(0.62 0.19 20);
+    --destructive-foreground: oklch(0.98 0 0);
+    --ring: oklch(0.80 0.12 305 / 0.9);
+    --glow: oklch(0.86 0.13 305);
+    --glow-spread: oklch(0.72 0.19 300 / 0.55);
+    --radius: 0.75rem;
+    --card: var(--surface-1);
+    --card-foreground: var(--foreground);
+    --popover: var(--surface-2);
+    --popover-foreground: var(--foreground);
     --chart-1: oklch(0.87 0 0);
     --chart-2: oklch(0.556 0 0);
     --chart-3: oklch(0.439 0 0);
     --chart-4: oklch(0.371 0 0);
     --chart-5: oklch(0.269 0 0);
-    --radius: 0.5rem;
     --sidebar: oklch(0.985 0 0);
     --sidebar-foreground: oklch(0.145 0 0);
     --sidebar-primary: oklch(0.205 0 0);
@@ -41,40 +47,7 @@
     --star-level-2: oklch(0.84 0.14 90 / 0.75);
     --star-level-3: oklch(0.8 0.17 85);
     --star-dim: oklch(0.72 0 0 / 0.3);
-    --star-broken: oklch(0.55 0 0 / 0.35)
-  }
-  .dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0)
+    --star-broken: oklch(0.55 0 0 / 0.35);
   }
 }
 
@@ -84,5 +57,222 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  /* 深空紫光斑 + 底部暗角（首页首屏，不使用图片） */
+  .space-glow {
+    background-image:
+      radial-gradient(
+        ellipse 65% 55% at 18% -5%,
+        oklch(0.72 0.19 300 / 0.22),
+        transparent 70%
+      ),
+      radial-gradient(
+        ellipse 55% 45% at 88% 12%,
+        oklch(0.86 0.13 305 / 0.14),
+        transparent 72%
+      ),
+      linear-gradient(
+        to bottom,
+        transparent 55%,
+        oklch(0.12 0.02 285 / 0.85) 100%
+      );
+  }
+
+  /* Focus 页静态兜底背景（Lightfall 不可用时仍可见） */
+  .focus-backdrop {
+    background-image:
+      radial-gradient(
+        ellipse 70% 45% at 50% -8%,
+        oklch(0.72 0.19 300 / 0.32),
+        transparent 72%
+      ),
+      linear-gradient(
+        to bottom,
+        transparent 55%,
+        oklch(0.1 0.02 285 / 0.95) 100%
+      );
+  }
+  .focus-backdrop--milestone {
+    background-image:
+      radial-gradient(
+        ellipse 90% 55% at 50% -4%,
+        oklch(0.86 0.13 305 / 0.48),
+        transparent 74%
+      ),
+      linear-gradient(
+        to bottom,
+        transparent 45%,
+        oklch(0.1 0.02 285 / 0.95) 100%
+      );
+  }
+
+  /* 霓虹紫发光按钮（每页最多 1 个，供 Button variant="glow"） */
+  .btn-glow {
+    --glow-color: var(--glow);
+    --glow-spread-color: var(--glow-spread);
+    --btn-color: oklch(0.36 0.09 300);
+    position: relative;
+    border: 1px solid var(--glow-color);
+    border-radius: 0.75rem;
+    background-color: var(--btn-color);
+    color: var(--glow-color);
+    font-weight: 600;
+    text-shadow: 0 0 0.5em var(--glow-color);
+    box-shadow:
+      0 0 1em 0.25em var(--glow-color),
+      0 0 4em 1em var(--glow-spread-color),
+      inset 0 0 0.75em 0.25em var(--glow-color);
+    transition: all 300ms;
+  }
+  .btn-glow::after {
+    pointer-events: none;
+    content: "";
+    position: absolute;
+    top: 120%;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    background-color: var(--glow-spread-color);
+    filter: blur(2em);
+    opacity: 0.7;
+    transform: perspective(1.5em) rotateX(35deg) scale(1, 0.6);
+  }
+  .btn-glow:hover {
+    color: var(--primary-foreground);
+    background-color: var(--glow-color);
+    box-shadow:
+      0 0 1em 0.25em var(--glow-color),
+      0 0 4em 2em var(--glow-spread-color),
+      inset 0 0 0.75em 0.25em var(--glow-color);
+  }
+  .btn-glow:active {
+    box-shadow:
+      0 0 0.6em 0.25em var(--glow-color),
+      0 0 2.5em 2em var(--glow-spread-color),
+      inset 0 0 0.5em 0.25em var(--glow-color);
+  }
+
+  /* 登录/注册玻璃表单 */
+  .glass-form {
+    background:
+      linear-gradient(
+        14deg,
+        rgba(2, 0, 36, 0.8) 0%,
+        rgba(24, 24, 65, 0.7) 66%,
+        rgb(20, 76, 99) 100%
+      ),
+      radial-gradient(
+        circle,
+        rgba(2, 0, 36, 0.5) 0%,
+        rgba(32, 15, 53, 0.2) 65%,
+        rgba(14, 29, 28, 0.9) 100%
+      );
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    box-shadow: rgba(0, 212, 255, 0.3) 0px 0px 50px -15px;
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+  }
+
+  /* 登录/注册流星装饰层（6 颗，纯 CSS） */
+  .meteor-field {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: -1;
+  }
+  .meteor-field .star {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 4px;
+    height: 4px;
+    background: oklch(0.96 0.01 285);
+    border-radius: 50%;
+    box-shadow:
+      0 0 0 4px rgba(255, 255, 255, 0.1),
+      0 0 0 8px rgba(255, 255, 255, 0.1),
+      0 0 20px var(--glow-spread);
+    animation: meteor 3s linear infinite;
+  }
+  .meteor-field .star::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 300px;
+    height: 1px;
+    background: linear-gradient(90deg, oklch(0.86 0.13 305 / 0.9), transparent);
+  }
+  .meteor-field .star:nth-child(1) {
+    top: 0;
+    right: 0;
+    left: initial;
+    animation-delay: 0s;
+    animation-duration: 1s;
+  }
+  .meteor-field .star:nth-child(2) {
+    top: 0;
+    right: 100px;
+    left: initial;
+    animation-delay: 0.2s;
+    animation-duration: 3s;
+  }
+  .meteor-field .star:nth-child(3) {
+    top: 0;
+    right: 220px;
+    left: initial;
+    animation-delay: 2.75s;
+    animation-duration: 2.75s;
+  }
+  .meteor-field .star:nth-child(4) {
+    top: 0;
+    right: -220px;
+    left: initial;
+    animation-delay: 1.6s;
+    animation-duration: 1.6s;
+  }
+  .meteor-field .star:nth-child(5) {
+    top: 0;
+    right: 320px;
+    left: initial;
+    animation-delay: 2.2s;
+    animation-duration: 2.2s;
+  }
+  .meteor-field .star:nth-child(6) {
+    top: 0;
+    right: -100px;
+    left: initial;
+    animation-delay: 3.2s;
+    animation-duration: 3.2s;
+  }
+}
+
+@keyframes meteor {
+  0% {
+    transform: rotate(315deg) translateX(0);
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(315deg) translateX(-1000px);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .meteor-field {
+    display: none;
+  }
+  .btn-glow {
+    transition: none;
+  }
+  .btn-glow::after {
+    display: none;
   }
 }
