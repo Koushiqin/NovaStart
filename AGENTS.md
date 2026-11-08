@@ -110,7 +110,7 @@ NovaStart：「每天主动学习五分钟」Demo 应用。React SPA + FastAPI +
 
 - 已确认范围内持续执行，不反复请求批准。
 - 不提交真实密钥（`.env` 不入库），不覆盖用户已有改动。
-- `TECH_STACK.md` / `techstack_plan.md` 按用户意愿保持 git 未跟踪，不要主动 `git add`。
+- `techstack_plan.md` 按用户意愿保持 git 未跟踪，不要主动 `git add`；`TECH_STACK.md` 已纳入版本控制。
 
 ## 本机环境关键约束（AI 执行命令时必守）
 
