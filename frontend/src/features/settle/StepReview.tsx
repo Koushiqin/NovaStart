@@ -75,7 +75,9 @@ export default function StepReview({ sessionId, onDone }: StepProps) {
     <Card>
       <CardHeader>
         <CardTitle>第④步 · 回顾</CardTitle>
-        <CardDescription>从过去的记录里抽一条，作为这次的收尾。</CardDescription>
+        {loaded && !loadError && item !== null && (
+          <CardDescription>从过去的记录里抽一条，作为这次的收尾。</CardDescription>
+        )}
       </CardHeader>
       <CardContent className="space-y-3">
         {!loaded ? (
