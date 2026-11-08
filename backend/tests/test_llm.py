@@ -4,7 +4,12 @@ import pytest
 
 from app.llm.base import SplitResult, TaskSplitter
 from app.llm.mock import MockSplitter
-from app.llm.openai_compat import OpenAICompatSplitter, _parse_payload
+from app.llm.openai_compat import (
+    OpenAICompatSplitter,
+    _SYSTEM_PROMPT,
+    _build_messages,
+    _parse_payload,
+)
 
 
 class CountingSplitter:
@@ -78,3 +83,49 @@ def test_parse_truncates_to_five():
 
     assert starter == "先打开资料"
     assert len(steps) == 5
+
+
+def test_build_messages_preserves_raw_goal():
+    goal = "复习三角函数\n附带 3 道错题"
+    messages = _build_messages(goal, "2026-11-08")
+
+    assert [m["role"] for m in messages] == ["system", "user"]
+    assert goal in messages[1]["content"]
+    assert "2026-11-08" in messages[1]["content"]
+
+
+def test_system_prompt_encodes_starter_rules():
+    prompt = _SYSTEM_PROMPT
+
+    assert "5 分钟起步任务拆解助手" in prompt
+    assert "禁止强行拆分" in prompt
+    assert "只负责启动" in prompt
+    assert "粗糙" in prompt
+    assert "只输出一个 JSON 对象" in prompt
+    assert "40 个字符" in prompt
+    assert "60 字符" in prompt
+
+
+def test_prompt_shaped_payload_passes_normalization():
+    from app.services.task_service import _normalize_split
+
+    # 原目标本身 5 分钟内可完成：steps 为空数组
+    starter, steps = _parse_payload(
+        {"starter_step": "打开单词本，读第 1 页", "steps": []}
+    )
+    normalized = _normalize_split(
+        SplitResult(starter_step=starter, steps=steps, source="llm")
+    )
+    assert normalized is not None and normalized.steps == []
+
+    # 正常拆分：steps 只含一条启动说明
+    starter, steps = _parse_payload(
+        {
+            "starter_step": "打开文档，写下 5 条与主题相关的零散想法，不梳理逻辑",
+            "steps": ["启动说明：先写下零散想法能降低开始门槛"],
+        }
+    )
+    normalized = _normalize_split(
+        SplitResult(starter_step=starter, steps=steps, source="llm")
+    )
+    assert normalized is not None and normalized.steps == steps
