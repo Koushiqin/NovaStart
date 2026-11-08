@@ -4,7 +4,6 @@ import axios from "axios"
 import { apiClient } from "@/api/client"
 import { useAppStore } from "@/store/app"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import Modal from "@/components/ui/modal"
 import TaskComposer from "@/features/task/TaskComposer"
 import SplitEditor from "@/features/task/SplitEditor"
@@ -236,23 +235,30 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero */}
-      <section className="border-b bg-gradient-to-b from-primary/5 to-transparent">
-        <div className="mx-auto max-w-3xl px-6 py-12 text-center">
-          <h1 className="text-4xl font-bold tracking-tight">NovaStart</h1>
-          <p className="mt-2 text-lg text-muted-foreground">每天五分钟，主动学习一点点</p>
-          {/* 图片占位 */}
-          <div className="mx-auto mt-6 aspect-video w-full max-w-2xl rounded-xl border border-dashed bg-muted/40 flex items-center justify-center text-muted-foreground">
-            图片占位
-          </div>
-          <div className="mt-6">
+      <section className="space-glow flex min-h-[78vh] items-center justify-center">
+        <div className="mx-auto w-full max-w-3xl px-6 py-16 text-center">
+          <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+            DAILY PRACTICE · 5 MIN
+          </p>
+          <h1 className="mt-6 text-[clamp(2.5rem,7vw,5.5rem)] font-semibold leading-[0.95] tracking-[-0.03em]">
+            每天五分钟
+          </h1>
+          <p className="text-[clamp(2.5rem,7vw,5.5rem)] font-semibold leading-[0.95] tracking-[-0.03em] text-muted-foreground">
+            主动学习一点点
+          </p>
+          <p className="mx-auto mt-6 max-w-md text-sm leading-relaxed text-muted-foreground">
+            每天留出五分钟，把「想学」落成一个马上就能做完的小步骤。
+          </p>
+          <div className="mt-10">
             <Button
+              variant="glow"
               size="lg"
               disabled={userId == null}
               onClick={() => setStartOpen(true)}
             >
               开始今日的五分钟学习
             </Button>
-            <p className="mt-2 text-sm text-muted-foreground">
+            <p className="mt-3 text-xs text-muted-foreground">
               开始学习以获得别人的信件
             </p>
           </div>
@@ -261,26 +267,36 @@ export default function HomePage() {
 
       {/* 已登录功能区 */}
       {userId != null && (
-        <div className="mx-auto max-w-3xl space-y-4 px-6 py-8">
+        <div className="mx-auto max-w-3xl px-6 py-8">
           {progress !== null && (
-            <Card>
-              <CardContent className="space-y-4 p-5">
-                <StreakBadge current={progress.streak.current} longest={progress.streak.longest} />
-                <StarWall wall={progress.wall} />
-              </CardContent>
-            </Card>
+            <section className="space-y-6 border-t border-border/60 pt-10">
+              <StreakBadge current={progress.streak.current} longest={progress.streak.longest} />
+              <StarWall wall={progress.wall} />
+            </section>
           )}
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <Button variant="outline" onClick={() => { setLettersOpen(true); void loadLetters() }}>
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
+            <button
+              type="button"
+              className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:text-foreground"
+              onClick={() => { setLettersOpen(true); void loadLetters() }}
+            >
               历史收藏信件
-            </Button>
-            <Button variant="outline" onClick={() => { setRecordsOpen(true); setRecords(null); setRecordsError(null) }}>
+            </button>
+            <button
+              type="button"
+              className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:text-foreground"
+              onClick={() => { setRecordsOpen(true); setRecords(null); setRecordsError(null) }}
+            >
               历史学习记录
-            </Button>
-            <Button variant="outline" onClick={() => { setReflectionOpen(true); void loadReview() }}>
+            </button>
+            <button
+              type="button"
+              className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:text-foreground"
+              onClick={() => { setReflectionOpen(true); void loadReview() }}
+            >
               随机回顾感想
-            </Button>
+            </button>
           </div>
         </div>
       )}
