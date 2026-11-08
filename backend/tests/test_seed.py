@@ -111,7 +111,7 @@ async def test_reset_seed_prefills_mailbox(db_session: AsyncSession):
     ).all()
     assert len(inbox) == 2
     assert {letter.sender_id for letter in inbox} == {xiaomei.id}
-    assert {letter.content for letter in inbox} == {"小美的历史回顾：从一个小目标开始。"}
+    assert len({letter.content for letter in inbox}) == 2  # 两封正文不同
     assert all(letter.expired_at > offset.now() for letter in inbox)
 
     outbox = (

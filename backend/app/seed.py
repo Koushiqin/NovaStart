@@ -28,8 +28,14 @@ _DEMO_ACCOUNTS = (
     ("小刚", "xiaogang"),
 )
 
-# 小美昨日感想：既写入反思，也作为预置信件的正文
+# 小美昨日感想：写入反思
 _XIAOMEI_REFLECTION = "小美的历史回顾：从一个小目标开始。"
+
+# 小明预置的两封未处理信：正文各不相同，来自小美
+_XIAOMEI_LETTER_CONTENTS = (
+    _XIAOMEI_REFLECTION,
+    "今天只背了 5 个单词，但坐下来的那一分钟最难。",
+)
 
 # 小明 6 天历史用到的任务主题
 _DEMO_TOPICS = [
@@ -57,13 +63,16 @@ async def _add_day_history(
     await db.flush()
 
     started_at = datetime.combine(day, time(20, 0), tzinfo=SHANGHAI_TZ)
+    # 历史场次按「已结算」落库：否则 /sessions/current 会把它当成未走完流程的会话，
+    # 首页点 Start learning 会被带到旧场次的结算页。
     focus = Session(
         user_id=user.id,
         task_id=task.id,
         started_at=started_at,
         ended_at=started_at + timedelta(minutes=5),
         duration_sec=300,
-        status="completed",
+        status="settled",
+        settle_step=4,
     )
     db.add(focus)
     await db.flush()
@@ -127,16 +136,16 @@ async def reset_seed(session: AsyncSession, clock: Clock) -> list[User]:
         _XIAOMEI_REFLECTION,
     )
 
-    # 小明未处理信箱预置小美 2 封（正文取小美昨日感想），不走投递机会
+    # 小明未处理信箱预置小美 2 封（正文各不相同），不走投递机会
     expires_at = datetime.combine(today + timedelta(days=1), time.min, tzinfo=SHANGHAI_TZ)
     created_at = clock.now() - timedelta(hours=1)
-    for _ in range(2):
+    for content in _XIAOMEI_LETTER_CONTENTS:
         session.add(
             Letter(
                 user_id=xiaoming.id,
                 sender_id=xiaomei.id,
                 session_id=None,
-                content=_XIAOMEI_REFLECTION,
+                content=content,
                 status="delivered",
                 focused_delivery=False,
                 favorited=False,
