@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import FocusTimer from "@/features/focus/FocusTimer"
 import MilestoneBanner from "@/features/focus/MilestoneBanner"
+import Lightfall from "@/features/focus/Lightfall"
 
 // 与 backend/app/schemas/session.py 的 SessionInfo 对应（专注页唯一消费者，类型就近维护）
 interface SessionInfo {
@@ -80,6 +81,16 @@ export default function FocusPage() {
   const capTriggeredRef = useRef(false)
   // 服务端最长时长（秒），用于封顶时立即补懒标记并按上限截断展示
   const [maxSeconds, setMaxSeconds] = useState<number | null>(null)
+  // 仅控制是否挂载 Lightfall 背景，不参与计时/轮询/结束逻辑
+  const [reducedMotion, setReducedMotion] = useState(false)
+
+  useEffect(() => {
+    const query = window.matchMedia("(prefers-reduced-motion: reduce)")
+    setReducedMotion(query.matches)
+    const onChange = (event: MediaQueryListEvent) => setReducedMotion(event.matches)
+    query.addEventListener("change", onChange)
+    return () => query.removeEventListener("change", onChange)
+  }, [])
 
   // 挂载/切账号：拉取当前会话；无会话回首页；账号未选不发业务请求
   useEffect(() => {
@@ -252,17 +263,40 @@ export default function FocusPage() {
   const displayElapsedSec = maxSeconds === null ? elapsedSec : Math.min(elapsedSec, maxSeconds)
 
   return (
-    <div
-      className={cn(
-        "flex min-h-screen items-center justify-center p-6 transition-colors duration-700",
-        milestone ? "bg-secondary/40" : "bg-background"
+    <div className="relative isolate flex min-h-screen items-center justify-center overflow-hidden p-6">
+      <div
+        aria-hidden="true"
+        className={cn(
+          "focus-backdrop pointer-events-none absolute inset-0 -z-10",
+          milestone && "focus-backdrop--milestone"
+        )}
+      />
+      {!reducedMotion && (
+        <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden="true">
+          <Lightfall
+            colors={["#c4b5fd", "#f0abfc", "#a78bfa"]}
+            backgroundColor="#08060f"
+            speed={0.25}
+            streakCount={2}
+            streakWidth={0.7}
+            glow={0.9}
+            density={0.55}
+            twinkle={0.25}
+            zoom={3}
+            bloom={0.35}
+            intro
+            mouseInteraction
+            dpr={Math.min(window.devicePixelRatio, 1.5)}
+          />
+        </div>
       )}
-    >
-      <div className="w-full max-w-md space-y-8">
+      <div className="relative w-full max-w-md space-y-8">
         {session ? (
           <>
             <div className="space-y-2 text-center">
-              <p className="text-xs uppercase tracking-widest text-muted-foreground">本次专注</p>
+              <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+                本次专注
+              </p>
               <p className="text-base font-medium">
                 {session.task_starter_step ?? "今天的任务"}
               </p>
@@ -276,7 +310,7 @@ export default function FocusPage() {
               <Button
                 className="w-full"
                 size="lg"
-                variant={milestone ? "default" : "outline"}
+                variant={milestone ? "glow" : "outline"}
                 onClick={handleEnd}
                 disabled={ending || discardNotice !== null}
               >

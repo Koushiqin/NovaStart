@@ -12,7 +12,10 @@ function formatElapsed(totalSec: number): string {
 export default function FocusTimer({ elapsedSec }: FocusTimerProps) {
   return (
     <div className="space-y-2 text-center">
-      <p className="font-mono text-6xl font-semibold tabular-nums tracking-tight sm:text-7xl">
+      <p
+        className="font-mono font-semibold tabular-nums tracking-tight"
+        style={{ fontSize: "clamp(3.5rem, 12vw, 5rem)", lineHeight: 1 }}
+      >
         {formatElapsed(Math.max(0, elapsedSec))}
       </p>
       <p className="text-xs text-muted-foreground">从开始就不再停下，先做五分钟。</p>
