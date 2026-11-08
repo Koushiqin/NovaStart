@@ -5,6 +5,7 @@ import { apiClient } from "@/api/client"
 import { useAppStore } from "@/store/app"
 import { Button } from "@/components/ui/button"
 import Modal from "@/components/ui/modal"
+import LetterTicket from "@/components/ui/letter-ticket"
 import TaskComposer from "@/features/task/TaskComposer"
 import SplitEditor from "@/features/task/SplitEditor"
 import type { AnalyzeResult, TaskResponse, TodayResponse } from "@/features/task/types"
@@ -347,11 +348,14 @@ export default function HomePage() {
         ) : (
           <ul className="max-h-[60vh] space-y-3 overflow-y-auto">
             {letters.map((l) => (
-              <li key={l.id} className="rounded-md border p-3">
-                <p className="text-sm">{l.content}</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {l.sender_name ?? "未知"} · {new Date(l.created_at).toLocaleString()}
-                </p>
+              <li key={l.id}>
+                <LetterTicket
+                  id={l.id}
+                  dateISO={l.created_at}
+                  content={l.content}
+                  counterpart={l.sender_name}
+                  direction="in"
+                />
               </li>
             ))}
           </ul>
