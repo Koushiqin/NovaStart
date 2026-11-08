@@ -1,27 +1,41 @@
 from fastapi import Depends, Header, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.clock import Clock, get_clock
 from app.config import settings
 from app.db import get_session
 from app.llm import TaskSplitter, get_splitter
-from app.services import user_service
+from app.services import auth_service
 
 
 async def get_current_user_id(
-    x_user_id: int = Header(alias="X-User-Id"),
+    authorization: str | None = Header(default=None),
     db: AsyncSession = Depends(get_session),
+    clock: Clock = Depends(get_clock),
 ) -> int:
-    """当前用户单点解析：请求头必填，账号必须存在。
+    """当前用户单点解析：从 Authorization: Bearer <token> 解析登录会话。
 
-    缺失 / 非整数由 FastAPI 请求头校验直接返回 422；账号不存在统一 404，
-    在业务逻辑执行前拦截，避免落库半截数据。
+    缺失 / 格式错误 → 401；token 无效或过期 → 401。
+    不再信任客户端传入的 user_id，user_id 一律由服务端 sessions 表解析。
     """
-    if not await user_service.user_exists(db, x_user_id):
+    if not authorization or not authorization.lower().startswith("bearer "):
         raise HTTPException(
-            status_code=404,
-            detail={"code": "USER_NOT_FOUND", "message": f"账号 {x_user_id} 不存在"},
+            status_code=401,
+            detail={"code": "UNAUTHORIZED", "message": "未登录或登录已过期"},
         )
-    return x_user_id
+    token = authorization[7:].strip()
+    if not token:
+        raise HTTPException(
+            status_code=401,
+            detail={"code": "UNAUTHORIZED", "message": "未登录或登录已过期"},
+        )
+    user_id = await auth_service.get_session_user_id(db, token, clock)
+    if user_id is None:
+        raise HTTPException(
+            status_code=401,
+            detail={"code": "UNAUTHORIZED", "message": "未登录或登录已过期"},
+        )
+    return user_id
 
 
 def get_task_splitter() -> TaskSplitter:

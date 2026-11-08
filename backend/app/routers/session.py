@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException
+from datetime import date
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.clock import Clock, get_clock
@@ -11,10 +13,12 @@ from app.schemas.session import (
     ReflectionContent,
     ReflectionCreate,
     ReflectionSaved,
+    SessionByDateItem,
     SessionCreate,
     SessionCreated,
     SessionEnded,
     SessionInfo,
+    SessionsByDateResponse,
     SessionSummary,
 )
 from app.services import reflection_service, session_service
@@ -96,6 +100,30 @@ async def current_session(
         session=info,
         server_time=clock.now().isoformat(),
         session_max_seconds=settings.session_max_seconds,
+    )
+
+
+@router.get("/by-date", response_model=SessionsByDateResponse)
+async def sessions_by_date(
+    date: date = Query(..., description="归属日 YYYY-MM-DD（Asia/Shanghai）"),
+    user_id: int = Depends(get_current_user_id),
+    clock: Clock = Depends(get_clock),
+    db: AsyncSession = Depends(get_session),
+) -> SessionsByDateResponse:
+    """查询某归属日的本人有效场次，按开始时间升序；不展示信件等社交数据。"""
+    rows = await session_service.list_by_date(db, user_id, date)
+    items = [
+        SessionByDateItem(
+            session_id=session.id,
+            started_at=session.started_at.isoformat(),
+            ended_at=session.ended_at.isoformat() if session.ended_at else None,
+            task_title=task_title,
+            reflection=reflection,
+        )
+        for session, task_title, reflection in rows
+    ]
+    return SessionsByDateResponse(
+        items=items, server_time=clock.now().isoformat()
     )
 
 

@@ -84,7 +84,7 @@ def _hdr(user_id: int) -> dict[str, str]:
 
 
 async def _make_user(db: AsyncSession, name: str) -> User:
-    user = User(name=name)
+    user = User(name=name, username=name)
     db.add(user)
     await db.commit()
     await db.refresh(user)
@@ -752,9 +752,9 @@ async def test_duplicate_recipient_name_picks_smallest_id(
     sender_id = sender.id
     # 先插大 id、后插小 id：seq scan 的物理行序与 id 序相反，
     # 未加 ORDER BY 时当前实现会返回大 id 那位。
-    db_session.add(User(id=900001, name="小美"))
+    db_session.add(User(id=900001, name="小美", username="xiaomei_900001"))
     await db_session.commit()
-    db_session.add(User(id=900000, name="小美"))
+    db_session.add(User(id=900000, name="小美", username="xiaomei_900000"))
     await db_session.commit()
     sid, _ = await _seed_session(db_session, sender_id)
 

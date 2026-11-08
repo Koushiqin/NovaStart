@@ -4,19 +4,32 @@ import { useAppStore } from "@/store/app"
 // 统一 axios 实例：baseURL=/api，vite dev 下经 proxy 转发到后端 8000，Docker 下由 nginx 反代
 export const apiClient = axios.create({ baseURL: "/api" })
 
-// 请求拦截器：所有 /api 请求单点注入身份请求头，身份唯一来源是 store.userId
+// 请求拦截器：所有 /api 请求单点注入登录 token，身份唯一来源是 store.sessionToken
 apiClient.interceptors.request.use((config) => {
-  const id = useAppStore.getState().userId
-  if (id != null) config.headers["X-User-Id"] = String(id)
+  const token = useAppStore.getState().sessionToken
+  if (token) config.headers["Authorization"] = `Bearer ${token}`
   return config
 })
 
-// 响应拦截器：读取服务端 server_time，记录服务端与本地时钟的偏移量（客户端时钟不可信）
-apiClient.interceptors.response.use((response) => {
-  const serverTime = response.data?.server_time
-  if (typeof serverTime === "string") {
-    const offsetMs = new Date(serverTime).getTime() - Date.now()
-    useAppStore.getState().setServerTimeOffsetMs(offsetMs)
+// 响应拦截器：
+// 1) 读取服务端 server_time，记录服务端与本地时钟的偏移量（客户端时钟不可信）
+// 2) 401 清除登录态（token 失效/过期）
+apiClient.interceptors.response.use(
+  (response) => {
+    const serverTime = response.data?.server_time
+    if (typeof serverTime === "string") {
+      const offsetMs = new Date(serverTime).getTime() - Date.now()
+      useAppStore.getState().setServerTimeOffsetMs(offsetMs)
+    }
+    return response
+  },
+  (error) => {
+    if (axios.isAxiosError(error) && error.response?.status === 401) {
+      // 只清一次，避免并发 401 重复触发
+      if (useAppStore.getState().sessionToken) {
+        useAppStore.getState().logout()
+      }
+    }
+    return Promise.reject(error)
   }
-  return response
-})
+)

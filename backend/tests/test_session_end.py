@@ -1,4 +1,5 @@
 from datetime import date, datetime, timedelta
+from itertools import count
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -73,8 +74,11 @@ async def fixed_clock(client):
     app.dependency_overrides.pop(get_clock, None)
 
 
+_uid = count(1)
+
+
 async def _make_user(db_session: AsyncSession) -> int:
-    user = User(name="测试用户")
+    user = User(name="测试用户", username=f"测试用户_{next(_uid)}")
     db_session.add(user)
     await db_session.commit()
     await db_session.refresh(user)

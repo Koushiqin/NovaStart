@@ -49,7 +49,7 @@ async def client(db_session):
 
 
 async def _make_user(db_session: AsyncSession, name: str = "测试用户") -> int:
-    user = User(name=name)
+    user = User(name=name, username=name)
     db_session.add(user)
     await db_session.commit()
     await db_session.refresh(user)

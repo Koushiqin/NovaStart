@@ -6,6 +6,7 @@ class UserOut(BaseModel):
 
     id: int
     name: str
+    username: str
 
 
 class UsersResponse(BaseModel):

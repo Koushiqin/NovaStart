@@ -74,3 +74,18 @@ class ReflectionSaved(BaseModel):
     reflection: ReflectionContent | None
     settle_step: int
     server_time: str
+
+
+class SessionByDateItem(BaseModel):
+    """单日历史记录中的一条：开始/结束时间、任务标题、本人感想。"""
+
+    session_id: int
+    started_at: str
+    ended_at: str | None
+    task_title: str
+    reflection: str | None
+
+
+class SessionsByDateResponse(BaseModel):
+    items: list[SessionByDateItem]
+    server_time: str

@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from itertools import count
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -8,6 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from app.db import Base, get_session
 from app.main import app
+from app.models.day_task import DayTask
+from app.models.reflection import Reflection
 from app.models.session import Session
 from app.models.user import User
 
@@ -43,8 +46,11 @@ async def client(db_session):
         yield c
 
 
+_uid = count(1)
+
+
 async def _make_user(db_session: AsyncSession) -> int:
-    user = User(name="测试用户")
+    user = User(name="测试用户", username=f"测试用户_{next(_uid)}")
     db_session.add(user)
     await db_session.commit()
     await db_session.refresh(user)
@@ -155,3 +161,56 @@ async def test_create_session_rejects_other_users_task(client, db_session):
         headers={"X-User-Id": str(owner_id)},
     )
     assert patch.status_code == 200
+
+
+async def _seed_completed_session(db_session, user_id, started_at, raw_text="学英语", reflection=None):
+    """直接落库一条已完成有效场次（+ 可选感想），返回 session。"""
+    task = DayTask(user_id=user_id, date=started_at.date(), raw_text=raw_text,
+                   starter_step="打开书", steps=["打开书"])
+    db_session.add(task)
+    await db_session.flush()
+    session = Session(user_id=user_id, task_id=task.id, started_at=started_at,
+                      ended_at=started_at + timedelta(minutes=5), duration_sec=300,
+                      status="completed")
+    db_session.add(session)
+    await db_session.flush()
+    if reflection:
+        db_session.add(Reflection(user_id=user_id, session_id=session.id,
+                                  content=reflection, date=started_at.date()))
+    await db_session.commit()
+    return session
+
+
+async def test_by_date_returns_sessions_ascending(client, db_session):
+    user_id = await _make_user(db_session)
+    day = datetime(2026, 11, 7, tzinfo=SHANGHAI_TZ)
+    await _seed_completed_session(db_session, user_id, day.replace(hour=10), raw_text="上午", reflection="上午感想")
+    await _seed_completed_session(db_session, user_id, day.replace(hour=8), raw_text="早上")
+
+    resp = await client.get("/api/sessions/by-date", params={"date": "2026-11-07"},
+                            headers={"X-User-Id": str(user_id)})
+
+    assert resp.status_code == 200
+    items = resp.json()["items"]
+    assert len(items) == 2
+    assert items[0]["task_title"] == "早上"
+    assert items[1]["task_title"] == "上午"
+    assert items[1]["reflection"] == "上午感想"
+    assert items[0]["started_at"] < items[1]["started_at"]
+
+
+async def test_by_date_empty_returns_empty_list(client, db_session):
+    user_id = await _make_user(db_session)
+
+    resp = await client.get("/api/sessions/by-date", params={"date": "2026-11-07"},
+                            headers={"X-User-Id": str(user_id)})
+
+    assert resp.status_code == 200
+    assert resp.json()["items"] == []
+
+
+async def test_by_date_invalid_date_422(client, db_session):
+    user_id = await _make_user(db_session)
+    resp = await client.get("/api/sessions/by-date", params={"date": "not-a-date"},
+                            headers={"X-User-Id": str(user_id)})
+    assert resp.status_code == 422

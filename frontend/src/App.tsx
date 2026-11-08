@@ -1,12 +1,20 @@
-import { BrowserRouter, Route, Routes } from "react-router-dom"
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom"
 import HomePage from "@/pages/HomePage"
 import FocusPage from "@/pages/FocusPage"
 import SettlePage from "@/pages/SettlePage"
 import RecordsPage from "@/pages/RecordsPage"
 import MailboxPage from "@/pages/MailboxPage"
+import LoginPage from "@/pages/LoginPage"
+import RegisterPage from "@/pages/RegisterPage"
 import AccountSwitcher from "@/features/AccountSwitcher"
+import { useAppStore } from "@/store/app"
 
-// 路由骨架：/ /focus /settle /records 四个占位页；顶部常驻演示账号切换器
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const userId = useAppStore((s) => s.userId)
+  if (userId == null) return <Navigate to="/login" replace />
+  return <>{children}</>
+}
+
 function App() {
   return (
     <BrowserRouter>
@@ -15,10 +23,40 @@ function App() {
       </header>
       <Routes>
         <Route path="/" element={<HomePage />} />
-        <Route path="/focus" element={<FocusPage />} />
-        <Route path="/settle" element={<SettlePage />} />
-        <Route path="/mailbox" element={<MailboxPage />} />
-        <Route path="/records" element={<RecordsPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route
+          path="/focus"
+          element={
+            <ProtectedRoute>
+              <FocusPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/settle"
+          element={
+            <ProtectedRoute>
+              <SettlePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/mailbox"
+          element={
+            <ProtectedRoute>
+              <MailboxPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/records"
+          element={
+            <ProtectedRoute>
+              <RecordsPage />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </BrowserRouter>
   )

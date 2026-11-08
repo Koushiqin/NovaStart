@@ -1,3 +1,4 @@
+import type { ReactNode } from "react"
 import { cn } from "@/lib/utils"
 
 // 与 backend/app/schemas/progress.py 的 ProgressSummary 对应（首页进度区唯一数据源）
@@ -62,8 +63,18 @@ const STATE_LABEL: Record<WallState, string> = {
   empty: "",
 }
 
-// 最近 30 天星星墙：服务端给出 state/level，前端只做三态渲染（empty 不绘制）
-export default function StarWall({ wall }: { wall: WallDay[] }) {
+/**
+ * 星星墙渲染器契约：美化时只需实现本接口并在调用处传入 renderer，
+ * 数据来源（GET /api/progress/summary）与 state/level 语义不得改动。
+ */
+export interface StarWallRendererProps {
+  wall: WallDay[]
+}
+
+export type StarWallRenderer = (props: StarWallRendererProps) => ReactNode
+
+// 默认渲染：最近 30 天星星墙，服务端给出 state/level，前端只做三态渲染（empty 不绘制）
+export function DefaultStarWallRenderer({ wall }: StarWallRendererProps) {
   return (
     <div className="grid grid-cols-10 justify-items-center gap-x-2 gap-y-2" aria-label="最近 30 天星星墙">
       {wall.map((day) => {
@@ -82,4 +93,16 @@ export default function StarWall({ wall }: { wall: WallDay[] }) {
       })}
     </div>
   )
+}
+
+/**
+ * 星星墙容器：只负责把数据交给渲染器。
+ * 预留美化接口 renderer，默认使用 DefaultStarWallRenderer；
+ * 换皮时新增一个满足 StarWallRenderer 的组件并从调用处注入即可。
+ */
+export default function StarWall({
+  wall,
+  renderer: Renderer = DefaultStarWallRenderer,
+}: StarWallRendererProps & { renderer?: StarWallRenderer }) {
+  return <Renderer wall={wall} />
 }

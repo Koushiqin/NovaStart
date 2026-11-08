@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.clock import SHANGHAI_TZ, Clock
 from app.models import (
     ActionLog,
+    AuthSession,
     DayTask,
     Letter,
     Reflection,
@@ -18,10 +19,14 @@ from app.services import progress_service
 
 # 按外键依赖倒序清表；users 单独处理：三个固定演示账号保留原 id，
 # 因为前端把 userId 持久化在 localStorage，id 漂移会让刷新后的选中账号失效。
-_CLEAR_ORDER = [ActionLog, Letter, Reflection, Session, Star, Streak, DayTask]
+_CLEAR_ORDER = [ActionLog, AuthSession, Letter, Reflection, Session, Star, Streak, DayTask]
 
-# 三个固定演示账号
-_DEMO_NAMES = ("小明", "小美", "小刚")
+# 三个固定演示账号（name, username）
+_DEMO_ACCOUNTS = (
+    ("小明", "xiaoming"),
+    ("小美", "xiaomei"),
+    ("小刚", "xiaogang"),
+)
 
 # 小美昨日感想：既写入反思，也作为预置信件的正文
 _XIAOMEI_REFLECTION = "小美的历史回顾：从一个小目标开始。"
@@ -85,14 +90,19 @@ async def reset_seed(session: AsyncSession, clock: Clock) -> list[User]:
         await session.execute(delete(model))
 
     # 非演示账号一律删除；已有演示账号复用（重复 reset 不改变 id）
-    await session.execute(delete(User).where(User.name.not_in(_DEMO_NAMES)))
+    demo_names = [name for name, _ in _DEMO_ACCOUNTS]
+    await session.execute(delete(User).where(User.name.not_in(demo_names)))
     existing = {u.name: u for u in (await session.execute(select(User))).scalars()}
     users: list[User] = []
-    for name in _DEMO_NAMES:
+    for name, username in _DEMO_ACCOUNTS:
         user = existing.get(name)
         if user is None:
-            user = User(name=name)
+            user = User(name=name, username=username)
             session.add(user)
+        else:
+            # 已存在账号补齐 username（历史数据迁移场景）
+            if user.username != username:
+                user.username = username
         users.append(user)
     await session.flush()  # 新建账号拿到自增 id
 

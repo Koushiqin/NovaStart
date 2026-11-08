@@ -79,7 +79,7 @@ def _hdr(user_id: int) -> dict[str, str]:
 
 
 async def _make_user(db: AsyncSession, name: str) -> User:
-    user = User(name=name)
+    user = User(name=name, username=name)
     db.add(user)
     await db.commit()
     await db.refresh(user)
@@ -336,3 +336,24 @@ async def test_seed_history_is_eligible(client, db_session, fixed_clock):
     assert item["date"] in expected_dates
     assert item["task_text"]
     assert item["reflection"]
+
+
+async def test_daily_same_day_returns_same_item(client, db_session, fixed_clock):
+    user = await _make_user(db_session, "甲")
+    await _seed_history(db_session, user.id, datetime(2026, 11, 6, 9, tzinfo=SHANGHAI_TZ),
+                        raw_text="任务一", reflection="感想一")
+    await _seed_history(db_session, user.id, datetime(2026, 11, 7, 9, tzinfo=SHANGHAI_TZ),
+                        raw_text="任务二", reflection="感想二")
+
+    first = await client.get("/api/review/daily", headers=_hdr(user.id))
+    second = await client.get("/api/review/daily", headers=_hdr(user.id))
+
+    assert first.status_code == 200
+    assert first.json()["item"]["session_id"] == second.json()["item"]["session_id"]
+
+
+async def test_daily_empty_returns_null(client, db_session, fixed_clock):
+    user = await _make_user(db_session, "新")
+    res = await client.get("/api/review/daily", headers=_hdr(user.id))
+    assert res.status_code == 200
+    assert res.json()["item"] is None

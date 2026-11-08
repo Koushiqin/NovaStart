@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import date, timedelta
 
 from sqlalchemy import Date, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,6 +7,7 @@ from app.clock import Clock, SHANGHAI_TZ
 from app.config import settings
 from app.models.day_task import DayTask
 from app.models.letter import Letter
+from app.models.reflection import Reflection
 from app.models.session import Session
 from app.models.star import Star
 from app.services import progress_service
@@ -202,3 +203,28 @@ async def get_settlement_summary(
         int(received or 0),
         attribution_day.isoformat(),
     )
+
+
+async def list_by_date(
+    db: AsyncSession, user_id: int, day: date
+) -> list[tuple[Session, str, str | None]]:
+    """查询某归属日（Asia/Shanghai）的本人有效场次，按 started_at 升序。
+
+    返回 [(session, task_title, reflection_content_or_none), ...]。
+    只包含已结束的有效场次（status ∈ SETTLEABLE_STATUSES 且 ended_at 非空），
+    不展示信件等社交数据。
+    """
+    stmt = (
+        select(Session, DayTask.raw_text, Reflection.content)
+        .join(DayTask, DayTask.id == Session.task_id)
+        .outerjoin(Reflection, Reflection.session_id == Session.id)
+        .where(
+            Session.user_id == user_id,
+            Session.status.in_(SETTLEABLE_STATUSES),
+            Session.ended_at.is_not(None),
+            cast(func.timezone("Asia/Shanghai", Session.started_at), Date) == day,
+        )
+        .order_by(Session.started_at.asc(), Session.id.asc())
+    )
+    rows = (await db.execute(stmt)).all()
+    return [(s, raw, ref) for s, raw, ref in rows]
