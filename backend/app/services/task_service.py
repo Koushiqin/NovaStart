@@ -49,8 +49,12 @@ def _task_state(task: DayTask, *, locked: bool) -> TaskState:
 
 
 async def _get_task(db: AsyncSession, user_id: int, day: date) -> DayTask | None:
+    """取某天最新的任务行：同日允许多条，后建的任务优先级更高。"""
     return await db.scalar(
-        select(DayTask).where(DayTask.user_id == user_id, DayTask.date == day)
+        select(DayTask)
+        .where(DayTask.user_id == user_id, DayTask.date == day)
+        .order_by(DayTask.id.desc())
+        .limit(1)
     )
 
 
@@ -83,7 +87,7 @@ async def _has_done_session(db: AsyncSession, task_id: int) -> bool:
 async def get_today(
     db: AsyncSession, user_id: int, clock: Clock
 ) -> tuple[TaskState | None, CarryOver | None]:
-    """首页唯一数据源：今日任务 + （今日无任务时）昨日未完任务提示。"""
+    """首页唯一数据源：今日最新任务 + （今日无任务时）昨日未完任务提示。"""
     today = clock.today()
     task = await _get_task(db, user_id, today)
     if task is not None:
@@ -98,13 +102,14 @@ async def get_today(
 async def create_draft(
     db: AsyncSession, user_id: int, raw_text: str, clock: Clock
 ) -> tuple[TaskState, bool]:
-    """当天首次输入建草稿；同日重复请求返回既有任务（created=False）。"""
+    """当天建草稿：最新任务尚未开始时复用它；已开始过则再建一条新任务。
+
+    返回 (任务状态, 是否新建)。「已开始」沿用 _has_any_session 口径，
+    discarded 会话不算开始，仍可继续使用原任务。
+    """
     existing = await _get_task(db, user_id, clock.today())
-    if existing is not None:
-        return (
-            _task_state(existing, locked=await _has_any_session(db, existing.id)),
-            False,
-        )
+    if existing is not None and not await _has_any_session(db, existing.id):
+        return _task_state(existing, locked=False), False
 
     task = DayTask(
         user_id=user_id,

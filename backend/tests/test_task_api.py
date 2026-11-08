@@ -137,6 +137,36 @@ async def test_create_duplicate_returns_existing(
     assert len(rows) == 1
 
 
+async def test_create_new_task_after_previous_locked(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """当天任务已开始后，再建任务会新增一条同日任务，并成为 /tasks/today 的最新任务。"""
+    user_id = await _make_user(db_session)
+    clock = Clock()
+    first = await _create(client, user_id, "背单词")
+
+    db_session.add(
+        Session(user_id=user_id, task_id=first["id"], started_at=clock.now(), status="completed")
+    )
+    await db_session.commit()
+
+    second = await _create(client, user_id, "读一章书")
+
+    assert second["id"] != first["id"]
+    assert second["raw_text"] == "读一章书"
+    assert second["locked"] is False
+
+    rows = (await db_session.scalars(select(DayTask))).all()
+    assert len(rows) == 2
+
+    today = (await client.get("/api/tasks/today", headers=_header(user_id))).json()["task"]
+    assert today["id"] == second["id"]
+
+    # 新任务可独立分析，不受旧任务锁定影响
+    resp = await _analyze(client, user_id, second["id"])
+    assert resp.status_code == 200, resp.text
+
+
 async def test_empty_and_over_200_rejected(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
