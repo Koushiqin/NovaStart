@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from "react"
 import axios from "axios"
 import { apiClient } from "@/api/client"
 import { useAppStore } from "@/store/app"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import InboxList from "@/features/mailbox/InboxList"
 import HistoryList from "@/features/mailbox/HistoryList"
 import OutboxList from "@/features/mailbox/OutboxList"
@@ -93,42 +92,45 @@ export default function MailboxPage() {
 
   return (
     <div className="min-h-screen bg-background flex items-start justify-center p-6">
-      <div className="w-full max-w-xl space-y-4">
+      <div className="w-full max-w-xl space-y-8">
         {userId == null ? (
           <p className="rounded-md border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
             请先在右上角选择一个演示账号。
           </p>
         ) : (
           <>
-            <Card>
-              <CardHeader>
-                <CardTitle>未处理</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <InboxList
-                  letters={inbox}
-                  busyId={busyId}
-                  onFavorite={handleFavorite}
-                  onDismiss={handleDismiss}
-                />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>历史信箱</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <HistoryList letters={history} busyId={busyId} onDelete={handleDelete} />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>发出记录</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <OutboxList letters={outbox} />
-              </CardContent>
-            </Card>
+            <section className="space-y-3 border-t border-border/60 pt-8 first:border-t-0 first:pt-0">
+              <div className="space-y-1">
+                <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+                  INBOX
+                </p>
+                <h2 className="text-lg font-semibold">未处理</h2>
+              </div>
+              <InboxList
+                letters={inbox}
+                busyId={busyId}
+                onFavorite={handleFavorite}
+                onDismiss={handleDismiss}
+              />
+            </section>
+            <section className="space-y-3 border-t border-border/60 pt-8 first:border-t-0 first:pt-0">
+              <div className="space-y-1">
+                <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+                  ARCHIVE
+                </p>
+                <h2 className="text-lg font-semibold">历史信箱</h2>
+              </div>
+              <HistoryList letters={history} busyId={busyId} onDelete={handleDelete} />
+            </section>
+            <section className="space-y-3 border-t border-border/60 pt-8 first:border-t-0 first:pt-0">
+              <div className="space-y-1">
+                <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+                  OUTBOX
+                </p>
+                <h2 className="text-lg font-semibold">发出记录</h2>
+              </div>
+              <OutboxList letters={outbox} />
+            </section>
             {error && <p className="text-sm text-destructive">{error}</p>}
           </>
         )}

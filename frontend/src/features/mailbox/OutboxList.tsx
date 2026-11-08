@@ -1,3 +1,4 @@
+import LetterTicket from "@/components/ui/letter-ticket"
 import type { OutboxLetter } from "./types"
 
 // 发出记录：自己投出的信，按状态标「已投递 / 未送达」
@@ -13,14 +14,15 @@ export default function OutboxList({ letters }: { letters: OutboxLetter[] }) {
   return (
     <ul className="space-y-3">
       {letters.map((letter) => (
-        <li key={letter.id} className="rounded-md border p-3 space-y-1">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">寄给 {letter.recipient_name ?? "同学"}</span>
-            <span className={letter.status === "delivered" ? "text-muted-foreground" : "text-destructive"}>
-              {letter.status === "delivered" ? "已投递" : "未送达"}
-            </span>
-          </div>
-          <p className="text-sm leading-relaxed">{letter.content}</p>
+        <li key={letter.id}>
+          <LetterTicket
+            id={letter.id}
+            dateISO={letter.created_at}
+            content={letter.content}
+            counterpart={letter.recipient_name}
+            direction="out"
+            status={letter.status === "delivered" ? "已投递" : "未送达"}
+          />
         </li>
       ))}
     </ul>
