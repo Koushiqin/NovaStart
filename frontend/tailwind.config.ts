@@ -7,6 +7,10 @@ export default {
     content: ["./index.html", "./src/**/*.{ts,tsx}"],
   theme: {
   	extend: {
+  		fontFamily: {
+  			display: ['var(--font-display)'],
+  			sans: ['var(--font-sans)']
+  		},
   		borderRadius: {
   			lg: 'var(--radius)',
   			md: 'calc(var(--radius) - 2px)',

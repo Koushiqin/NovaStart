@@ -100,6 +100,42 @@ export function DefaultStarWallRenderer({ wall }: StarWallRendererProps) {
   )
 }
 
+const COMPACT_STATE_LABEL: Record<WallState, string> = {
+  lit: "lit",
+  dim: "not lit yet",
+  broken: "missed",
+  empty: "",
+}
+
+/**
+ * 首页右下角紧凑渲染器：同一份 wall 数据，放大星星并给已点亮星星加光晕呼吸。
+ * 只改绘制，不改变 state/level 语义。
+ */
+export function CompactStarWallRenderer({ wall }: StarWallRendererProps) {
+  return (
+    <div className="grid grid-cols-10 justify-items-center gap-x-2 gap-y-2" aria-label="Last 30 days">
+      {wall.map((day, index) => {
+        if (day.state === "empty") {
+          return <span key={day.date} className="block h-6 w-6" aria-hidden />
+        }
+        const lit = day.state === "lit"
+        // 按序号错峰，避免整墙同步呼吸
+        const delay = Number(((index * 0.31) % 3.6).toFixed(2))
+        return (
+          <span
+            key={day.date}
+            className={cn("flex h-6 w-6 items-center justify-center", lit && "star-twinkle")}
+            style={lit ? { animationDelay: `${delay}s` } : undefined}
+            title={`${day.date} ${COMPACT_STATE_LABEL[day.state]}`}
+          >
+            <StarIcon variant={day.state} level={day.level} className="h-6 w-6" />
+          </span>
+        )
+      })}
+    </div>
+  )
+}
+
 /**
  * 星星墙容器：只负责把数据交给渲染器。
  * 预留美化接口 renderer，默认使用 DefaultStarWallRenderer；

@@ -13,8 +13,9 @@ import type {
   OutboxResponse,
 } from "@/features/mailbox/types"
 
-// 信箱页：未处理 / 历史 / 发出记录三段；唯一写入路径是后端 letter 端点
-export default function MailboxPage() {
+// 信箱面板：未处理 / 历史 / 发出记录三段；唯一写入路径是后端 letter 端点
+// 由首页「Mailbox」弹窗挂载
+export default function MailboxPanel() {
   const userId = useAppStore((s) => s.userId)
   const [inbox, setInbox] = useState<Letter[]>([])
   const [history, setHistory] = useState<Letter[]>([])
@@ -90,51 +91,49 @@ export default function MailboxPage() {
   const handleDelete = (id: number) =>
     runLetterAction(id, () => apiClient.delete(`/letters/${id}`))
 
+  if (userId == null) {
+    return (
+      <p className="rounded-md border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
+        请先登录后再查看信箱。
+      </p>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-background flex items-start justify-center p-6">
-      <div className="w-full max-w-xl space-y-8">
-        {userId == null ? (
-          <p className="rounded-md border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
-            请先在右上角选择一个演示账号。
+    <div className="space-y-8">
+      <section className="space-y-3 border-t border-border/60 pt-8 first:border-t-0 first:pt-0">
+        <div className="space-y-1">
+          <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+            INBOX
           </p>
-        ) : (
-          <>
-            <section className="space-y-3 border-t border-border/60 pt-8 first:border-t-0 first:pt-0">
-              <div className="space-y-1">
-                <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
-                  INBOX
-                </p>
-                <h2 className="text-lg font-semibold">未处理</h2>
-              </div>
-              <InboxList
-                letters={inbox}
-                busyId={busyId}
-                onFavorite={handleFavorite}
-                onDismiss={handleDismiss}
-              />
-            </section>
-            <section className="space-y-3 border-t border-border/60 pt-8 first:border-t-0 first:pt-0">
-              <div className="space-y-1">
-                <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
-                  ARCHIVE
-                </p>
-                <h2 className="text-lg font-semibold">历史信箱</h2>
-              </div>
-              <HistoryList letters={history} busyId={busyId} onDelete={handleDelete} />
-            </section>
-            <section className="space-y-3 border-t border-border/60 pt-8 first:border-t-0 first:pt-0">
-              <div className="space-y-1">
-                <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
-                  OUTBOX
-                </p>
-                <h2 className="text-lg font-semibold">发出记录</h2>
-              </div>
-              <OutboxList letters={outbox} />
-            </section>
-            {error && <p className="text-sm text-destructive">{error}</p>}
-          </>
-        )}
-      </div>
+          <h2 className="text-lg font-semibold">未处理</h2>
+        </div>
+        <InboxList
+          letters={inbox}
+          busyId={busyId}
+          onFavorite={handleFavorite}
+          onDismiss={handleDismiss}
+        />
+      </section>
+      <section className="space-y-3 border-t border-border/60 pt-8 first:border-t-0 first:pt-0">
+        <div className="space-y-1">
+          <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+            ARCHIVE
+          </p>
+          <h2 className="text-lg font-semibold">历史信箱</h2>
+        </div>
+        <HistoryList letters={history} busyId={busyId} onDelete={handleDelete} />
+      </section>
+      <section className="space-y-3 border-t border-border/60 pt-8 first:border-t-0 first:pt-0">
+        <div className="space-y-1">
+          <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+            OUTBOX
+          </p>
+          <h2 className="text-lg font-semibold">发出记录</h2>
+        </div>
+        <OutboxList letters={outbox} />
+      </section>
+      {error && <p className="text-sm text-destructive">{error}</p>}
     </div>
   )
 }

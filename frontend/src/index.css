@@ -2,6 +2,30 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 自托管字体：Docker 离线交付，不依赖 Google CDN（见 docs/specs/012） */
+@font-face {
+  font-family: "Instrument Serif";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/instrument-serif.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Instrument Serif";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/instrument-serif-italic.woff2") format("woff2");
+}
+/* Red Hat Display：同一变量字体文件覆盖 400–900 */
+@font-face {
+  font-family: "Red Hat Display";
+  font-style: normal;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url("/fonts/red-hat-display.woff2") format("woff2");
+}
+
 @layer base {
   /* 深空紫黑：单套深色 token，html 常驻 class="dark"（无明暗切换） */
   :root {
@@ -51,12 +75,19 @@
     --sidebar-accent-foreground: oklch(0.205 0 0);
     --sidebar-border: oklch(0.922 0 0);
     --sidebar-ring: oklch(0.708 0 0);
-    /* 星星墙亮度三档 + 今天未完成 / 断签空心（前端不推算，仅按服务端 state/level 渲染） */
-    --star-level-1: oklch(0.85 0.11 90 / 0.45);
-    --star-level-2: oklch(0.84 0.14 90 / 0.75);
-    --star-level-3: oklch(0.8 0.17 85);
-    --star-dim: oklch(0.72 0 0 / 0.3);
-    --star-broken: oklch(0.55 0 0 / 0.35);
+    /* 星星墙亮度三档 + 今天未完成 / 断签空心（前端不推算，仅按服务端 state/level 渲染）
+       单一色相：白 → 淡紫，亮度靠透明度分层，不引第二种强调色 */
+    --star-level-1: oklch(0.95 0.012 285 / 0.35);
+    --star-level-2: oklch(0.96 0.022 290 / 0.68);
+    --star-level-3: oklch(0.98 0.03 300 / 0.96);
+    --star-dim: oklch(0.72 0 0 / 0.22);
+    --star-broken: oklch(0.6 0.01 285 / 0.3);
+    /* 已点亮星星的呼吸光晕：沿用同一紫白色相，只靠透明度叠层 */
+    --star-glow: oklch(0.92 0.05 300 / 0.85);
+    /* 排版双字族：衬线体只用于展示标题与行内链接，其余一律 Red Hat Display */
+    --font-display: "Instrument Serif", Georgia, "Times New Roman", serif;
+    --font-sans: "Red Hat Display", ui-sans-serif, system-ui, -apple-system,
+      "PingFang SC", "Microsoft YaHei", sans-serif;
   }
 }
 
@@ -65,11 +96,39 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
+    -webkit-font-smoothing: antialiased;
   }
 }
 
 @layer utilities {
+  /* 首页深空天空：三层渐变（黑 → 紫黑 + 双层紫色星云）再叠低透明度星点。
+     与 docs/design/风格提示词.md 的背景配方一致；星点用重复渐变避免生成图片。 */
+  .cosmos-sky {
+    background-color: #050505;
+    background-image:
+      radial-gradient(1px 1px at 18% 22%, rgba(245, 244, 248, 0.55), transparent 100%),
+      radial-gradient(1.5px 1.5px at 72% 14%, rgba(245, 244, 248, 0.35), transparent 100%),
+      radial-gradient(1px 1px at 46% 68%, rgba(217, 211, 228, 0.4), transparent 100%),
+      radial-gradient(circle at 50% 42%, #3f2476 0%, transparent 60%),
+      radial-gradient(circle at 50% 50%, #160e26 60%, transparent 100%),
+      linear-gradient(180deg, #050505 40%, #0d0718 100%);
+    background-size:
+      360px 360px,
+      520px 520px,
+      680px 680px,
+      100% 100%,
+      100% 100%,
+      100% 100%;
+    background-repeat: repeat, repeat, repeat, no-repeat, no-repeat, no-repeat;
+  }
+
+  /* 首页星星墙：已点亮星星的光晕呼吸 + 轻微缩放闪烁，延迟由组件按序号注入 */
+  .star-twinkle {
+    animation: star-twinkle 3.6s ease-in-out infinite;
+    transform-origin: center;
+  }
+
   /* 深空紫光斑 + 底部暗角（首页首屏，不使用图片） */
   .space-glow {
     background-image:
@@ -338,9 +397,29 @@
   }
 }
 
+@keyframes star-twinkle {
+  0%,
+  100% {
+    opacity: 0.72;
+    transform: scale(0.92);
+    filter: drop-shadow(0 0 2px var(--star-glow));
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+    filter:
+      drop-shadow(0 0 4px var(--star-glow))
+      drop-shadow(0 0 12px var(--star-glow));
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .meteor-field {
     display: none;
+  }
+  .star-twinkle {
+    animation: none;
+    filter: drop-shadow(0 0 4px var(--star-glow));
   }
   .btn-glow {
     transition: none;

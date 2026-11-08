@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import FocusTimer from "@/features/focus/FocusTimer"
 import MilestoneBanner from "@/features/focus/MilestoneBanner"
-import Lightfall from "@/features/focus/Lightfall"
+import Particles from "@/components/ui/particles"
 
 // 与 backend/app/schemas/session.py 的 SessionInfo 对应（专注页唯一消费者，类型就近维护）
 interface SessionInfo {
@@ -37,6 +37,8 @@ interface SessionEndedResponse {
 const POLL_INTERVAL_MS = 15_000
 // 无效结束的差额提示停留时间
 const DISCARD_NOTICE_MS = 2_000
+// 粒子背景颜色：模块级常量，避免内联数组每次渲染都让背景组件重挂载
+const PARTICLE_COLORS = ["#ffffff"]
 
 // FastAPI 错误体可能是字符串或 {code, message}，422 时是校验错误数组
 function errorMessage(error: unknown): string {
@@ -81,7 +83,7 @@ export default function FocusPage() {
   const capTriggeredRef = useRef(false)
   // 服务端最长时长（秒），用于封顶时立即补懒标记并按上限截断展示
   const [maxSeconds, setMaxSeconds] = useState<number | null>(null)
-  // 仅控制是否挂载 Lightfall 背景，不参与计时/轮询/结束逻辑
+  // 仅控制是否挂载粒子背景，不参与计时/轮询/结束逻辑
   const [reducedMotion, setReducedMotion] = useState(false)
 
   useEffect(() => {
@@ -273,20 +275,16 @@ export default function FocusPage() {
       />
       {!reducedMotion && (
         <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden="true">
-          <Lightfall
-            colors={["#c4b5fd", "#f0abfc", "#a78bfa"]}
-            backgroundColor="#08060f"
-            speed={0.25}
-            streakCount={2}
-            streakWidth={0.7}
-            glow={0.9}
-            density={0.55}
-            twinkle={0.25}
-            zoom={3}
-            bloom={0.35}
-            intro
-            mouseInteraction
-            dpr={Math.min(window.devicePixelRatio, 1.5)}
+          <Particles
+            particleColors={PARTICLE_COLORS}
+            particleCount={200}
+            particleSpread={10}
+            speed={0.1}
+            particleBaseSize={100}
+            glow={0.5}
+            twinkle={0.3}
+            moveParticlesOnHover
+            hoverEffect="parallax"
           />
         </div>
       )}

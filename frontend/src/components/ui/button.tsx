@@ -20,6 +20,9 @@ const buttonVariants = cva(
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
         glow: "btn-glow rounded-xl",
+        // 毛玻璃圆形按钮：仅靠半透明填充与背景模糊成形，不加阴影、不填紫色
+        frost:
+          "rounded-full bg-[rgba(245,244,248,0.07)] text-[#f5f4f8] backdrop-blur-sm transition-all duration-150 hover:bg-[rgba(245,244,248,0.13)] hover:scale-[1.02] active:scale-[0.99]",
       },
       size: {
         default: "h-9 px-4 py-2",

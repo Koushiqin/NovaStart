@@ -60,9 +60,11 @@ export default function StepMailbox({ sessionId, onDone }: StepProps) {
     setError(null)
     try {
       await apiClient.post(`/settle/${sessionId}/advance`, { to_step: 3 })
-      onDone()
+      // 步骤推进以 summary 刷新为准；刷新失败时恢复按钮，允许再次点击重试
+      await Promise.resolve(onDone())
     } catch {
       setError("操作失败，请稍后重试")
+    } finally {
       setAdvancing(false)
     }
   }

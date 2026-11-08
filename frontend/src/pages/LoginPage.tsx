@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useRef, useState } from "react"
 import axios from "axios"
 import { useNavigate, Link } from "react-router-dom"
 import { login } from "@/api/auth"
@@ -11,6 +11,8 @@ export default function LoginPage() {
   const [username, setUsername] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  // 用户中途取消返回首页后，丢弃在途登录响应，避免回跳到已取消的登录态
+  const cancelledRef = useRef(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -23,6 +25,7 @@ export default function LoginPage() {
     setError(null)
     try {
       const res = await login(trimmed)
+      if (cancelledRef.current) return
       loginStore(res.user.id, res.user.username, res.token)
       navigate("/")
     } catch (err) {
@@ -42,6 +45,15 @@ export default function LoginPage() {
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background p-6">
       <MeteorField />
+      <Link
+        to="/"
+        onClick={() => {
+          cancelledRef.current = true
+        }}
+        className="absolute left-6 top-6 z-20 text-sm text-white/60 transition-colors hover:text-white"
+      >
+        ← 返回首页
+      </Link>
       <div className="glass-form relative z-10 w-full max-w-sm rounded-2xl p-8">
         <div className="text-center">
           <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-sky-200/70">

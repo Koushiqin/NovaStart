@@ -20,15 +20,18 @@ export default function StepReflection({ sessionId, onDone }: StepProps) {
     setBusy(true)
     setError(null)
     try {
-      await apiClient.post(`/sessions/${sessionId}/reflection`, { content: value })
-      onDone()
-    } catch (e) {
-      // 409 = 已提交或已跳过：断点已在下一步，刷新后继续即可
-      if (axios.isAxiosError(e) && e.response?.status === 409) {
-        onDone()
-        return
+      try {
+        await apiClient.post(`/sessions/${sessionId}/reflection`, { content: value })
+      } catch (e) {
+        // 409 = 已提交或已跳过：断点已在下一步，刷新后继续即可
+        if (!(axios.isAxiosError(e) && e.response?.status === 409)) {
+          setError("提交失败，请稍后重试")
+          return
+        }
       }
-      setError("提交失败，请稍后重试")
+      // 步骤推进以 summary 刷新为准；刷新失败时恢复按钮，允许再次点击重试
+      await Promise.resolve(onDone())
+    } finally {
       setBusy(false)
     }
   }

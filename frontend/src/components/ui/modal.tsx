@@ -24,14 +24,14 @@ export default function Modal({ open, onClose, title, children, maxWidth = "max-
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-background/70 backdrop-blur-sm" onClick={onClose} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       <div
-        className={`relative z-10 w-full ${maxWidth} animate-in fade-in zoom-in-95 rounded-2xl border border-border/70 bg-surface-2 p-6 shadow-[0_24px_80px_-24px_rgba(0,0,0,0.9)] duration-200`}
+        className={`relative z-10 w-full ${maxWidth} animate-in fade-in zoom-in-95 border border-[rgba(217,211,228,0.12)] bg-[rgba(3,2,6,0.55)] p-6 backdrop-blur-2xl duration-200`}
       >
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
-            <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+            <p className="font-sans text-[11px] font-black uppercase tracking-[0.14em] text-[rgba(245,244,248,0.4)]">
               NOVASTART
             </p>
             {title && <h2 className="mt-1 text-lg font-semibold">{title}</h2>}

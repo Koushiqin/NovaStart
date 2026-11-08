@@ -1,9 +1,8 @@
-import { BrowserRouter, Link, Navigate, Route, Routes } from "react-router-dom"
+import { BrowserRouter, Link, Navigate, Route, Routes, useLocation } from "react-router-dom"
 import HomePage from "@/pages/HomePage"
 import FocusPage from "@/pages/FocusPage"
 import SettlePage from "@/pages/SettlePage"
 import RecordsPage from "@/pages/RecordsPage"
-import MailboxPage from "@/pages/MailboxPage"
 import LoginPage from "@/pages/LoginPage"
 import RegisterPage from "@/pages/RegisterPage"
 import AccountSwitcher from "@/features/AccountSwitcher"
@@ -15,37 +14,51 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
-function App() {
+// 首页是编辑式全屏首屏：顶栏只保留右侧账号控件；其余路由沿用带品牌与导航的顶栏
+function AppHeader() {
   const userId = useAppStore((s) => s.userId)
-  return (
-    <BrowserRouter>
-      <header className="sticky top-0 z-40 border-b border-border/60 bg-background/70 backdrop-blur-md">
-        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 sm:px-6">
-          <Link to="/" className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-glow shadow-[0_0_12px_var(--glow)]" />
-            <span className="text-sm font-semibold tracking-wide">NovaStart</span>
-          </Link>
-          <div className="flex items-center gap-4">
-            {userId != null && (
-              <nav className="hidden items-center gap-4 sm:flex">
-                <Link
-                  to="/mailbox"
-                  className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  信箱
-                </Link>
-                <Link
-                  to="/records"
-                  className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  记录
-                </Link>
-              </nav>
-            )}
-            <AccountSwitcher />
-          </div>
+  const location = useLocation()
+  const isHome = location.pathname === "/"
+
+  if (isHome) {
+    return (
+      <header className="absolute inset-x-0 top-0 z-40">
+        <div className="mx-auto flex h-20 w-full max-w-[1200px] items-center justify-end px-6 sm:px-10">
+          <AccountSwitcher />
         </div>
       </header>
+    )
+  }
+
+  return (
+    <header className="sticky top-0 z-40 border-b border-border/60 bg-background/70 backdrop-blur-md">
+      <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 sm:px-6">
+        <Link to="/" className="flex items-center gap-2">
+          <span className="h-2 w-2 rounded-full bg-glow shadow-[0_0_12px_var(--glow)]" />
+          <span className="text-sm font-semibold tracking-wide">NovaStart</span>
+        </Link>
+        <div className="flex items-center gap-4">
+          {userId != null && (
+            <nav className="hidden items-center gap-4 sm:flex">
+              <Link
+                to="/records"
+                className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:text-foreground"
+              >
+                记录
+              </Link>
+            </nav>
+          )}
+          <AccountSwitcher />
+        </div>
+      </div>
+    </header>
+  )
+}
+
+function AppShell() {
+  return (
+    <>
+      <AppHeader />
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
@@ -67,14 +80,6 @@ function App() {
           }
         />
         <Route
-          path="/mailbox"
-          element={
-            <ProtectedRoute>
-              <MailboxPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
           path="/records"
           element={
             <ProtectedRoute>
@@ -83,6 +88,14 @@ function App() {
           }
         />
       </Routes>
+    </>
+  )
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <AppShell />
     </BrowserRouter>
   )
 }
