@@ -103,7 +103,34 @@ cd backend; .venv\Scripts\python.exe -m app.main
 
 ## 8. 执行结果、未验证项和遗留问题
 
-（Task 3 回填。）
+### 8.1 已运行通过的验证（2026-11-08）
+
+| 命令 / 场景 | 结果 |
+|---|---|
+| `backend\.venv\Scripts\python.exe -m pytest backend/tests/test_llm.py -q`（RED） | 1 error：`ImportError: cannot import name '_build_messages'`（3 条新用例在收集阶段即失败） |
+| `backend\.venv\Scripts\python.exe -m pytest backend/tests/test_llm.py -q`（GREEN） | **9 passed**（既有 6 条 + 新增 3 条） |
+| `backend\.venv\Scripts\python.exe -m pytest backend/tests/test_architecture.py -q` | **70 passed**（依赖方向与 `datetime.now()` 棘轮未受影响） |
+| `cd backend; .venv\Scripts\python.exe -m pytest -q`（PostgreSQL 已启动，沙箱外） | **211 passed**（改动前 208 + 新增 3），无用例被改写或放宽 |
+
+- 全量日志：`.superpowers/sdd/2026-11-08-llm-prompt-tuning/full-pytest.log`（git-ignored 临时目录）。
+- 无新增依赖、无迁移、无 API / 响应字段变化。
+
+### 8.2 测试已编写 vs 已运行通过
+
+- `backend/tests/test_llm.py` 新增 3 条用例**已编写并已运行通过**：`test_build_messages_preserves_raw_goal`、`test_system_prompt_encodes_starter_rules`、`test_prompt_shaped_payload_passes_normalization`。
+- 既有 6 条用例未修改、继续通过（`_parse_payload` 拒绝/截断与缓存、超时降级语义不变）。
+
+### 8.3 未验证项及原因
+
+- **真实模型冒烟未执行**：本机 `backend/.env` 的 `LLM_API_KEY` 为空，无可用的真实模型凭据；按计划跳过（未改 `.env`，不伪造 key）。因此「模型实际产出的 starter 是否更具体」「`steps[0]` 是否真的以『启动说明：』开头」两点**无运行时证据**，只由提示词文本断言 + 结构校验覆盖。
+- `steps: []` 空数组分支：仅有单元测试（`_parse_payload` + `_normalize_split`）证据，未在真实模型输出上复现。
+- 提示词长度约束是软约束：未在真实模型上验证「≤40 字符」的遵守率。
+
+### 8.4 遗留问题与边界
+
+- 提示词为运行时软约束，最终仍由 `task_service.MAX_STARTER_CHARS = 60` 硬校验兜底；超长 starter 会被判不合规并降级到 Mock（不返回假成功）。
+- 同一进程内 LRU（key = `任务文本|日期`）可能命中旧提示词产出的缓存条目；重启进程即失效，属运行边界，不属契约变更。
+- 用户提供的「精简版」提示词未写入代码（§2 备选），如需省 token 可整体替换 `_SYSTEM_PROMPT` 文本，不必改结构。
 
 ---
 
