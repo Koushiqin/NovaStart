@@ -36,6 +36,9 @@ export default function StepReflection({ sessionId, onDone }: StepProps) {
   return (
     <Card>
       <CardHeader>
+        <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+          STEP 01 · REFLECT
+        </p>
         <CardTitle>第①步 · 写一句感想</CardTitle>
         <CardDescription>选填。写一句就好，也可以跳过；提交后不可修改。</CardDescription>
       </CardHeader>

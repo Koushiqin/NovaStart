@@ -41,6 +41,9 @@ export default function SettleSummary({ data }: { data: SettleSummaryData }) {
   return (
     <Card>
       <CardContent className="space-y-5 p-6 text-center">
+        <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+          SETTLE
+        </p>
         <p className="text-2xl font-semibold">
           本次 {minutes(data.duration_sec)} 分钟
           <span className="text-muted-foreground">
@@ -50,7 +53,7 @@ export default function SettleSummary({ data }: { data: SettleSummaryData }) {
         </p>
 
         <div className="space-y-1">
-          <p className="text-xs uppercase tracking-widest text-muted-foreground">你的起步动作</p>
+          <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-muted-foreground">你的起步动作</p>
           <p className="text-lg font-medium leading-relaxed">「{data.starter_text}」</p>
         </div>
 

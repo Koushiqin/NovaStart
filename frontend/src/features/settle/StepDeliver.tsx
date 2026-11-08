@@ -69,6 +69,9 @@ export default function StepDeliver({ sessionId, onDone }: StepProps) {
   return (
     <Card>
       <CardHeader>
+        <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+          STEP 02 · DELIVER
+        </p>
         <CardTitle>第②步 · 投递</CardTitle>
         <CardDescription>本场可投 1 封，把这一场的心意寄给一位同学。</CardDescription>
       </CardHeader>

@@ -39,6 +39,9 @@ export default function CosmicWhisper() {
   return (
     <Card>
       <CardContent className="space-y-5 p-6 text-center">
+        <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+          SETTLED
+        </p>
         <p className="text-xl font-semibold leading-relaxed">
           5 分钟的星星，
           <br />

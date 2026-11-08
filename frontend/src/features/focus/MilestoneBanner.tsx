@@ -4,7 +4,7 @@ import { StarIcon } from "@/features/progress/StarWall"
 // 小星星与 FocusPage 背景变亮同一次触发（都随 milestone 挂载播放一次，不做循环动画）。
 export default function MilestoneBanner() {
   return (
-    <div className="flex animate-in fade-in slide-in-from-bottom-2 items-center justify-center gap-2 rounded-lg border bg-card px-4 py-3 text-center text-sm shadow-sm duration-500">
+    <div className="flex animate-in fade-in slide-in-from-bottom-2 items-center justify-center gap-2 rounded-2xl border border-border/70 bg-surface-2 px-4 py-3 text-center text-sm shadow-[0_0_24px_-10px_var(--glow)] duration-500">
       <StarIcon
         variant="lit"
         level={1}

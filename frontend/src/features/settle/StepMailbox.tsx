@@ -70,6 +70,9 @@ export default function StepMailbox({ sessionId, onDone }: StepProps) {
   return (
     <Card>
       <CardHeader>
+        <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+          STEP 03 · MAILBOX
+        </p>
         <CardTitle>第③步 · 信箱</CardTitle>
         <CardDescription>收藏想留下的信，其余的放弃。</CardDescription>
       </CardHeader>
