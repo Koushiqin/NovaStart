@@ -203,6 +203,22 @@ async def test_excludes_self_when_only_candidate(client, db_session, fixed_clock
     assert res.json()["item"]["session_id"] == past_sid
 
 
+async def test_today_other_session_excluded(client, db_session, fixed_clock):
+    """当天非本场场次一律不入选；07:00 上海 = 前一日 UTC，同时钉住归属日时区口径。"""
+    user = await _make_user(db_session, "甲")
+    await _seed_history(
+        db_session,
+        user.id,
+        datetime(2026, 11, 8, 7, 0, tzinfo=SHANGHAI_TZ),
+        reflection="今天另一场的感想",
+    )
+
+    res = await _random(client, user.id, 0)
+
+    assert res.status_code == 200
+    assert res.json()["item"] is None
+
+
 async def test_empty_pool_returns_null(client, db_session, fixed_clock):
     user = await _make_user(db_session, "刚")
     today_sid = await _seed_history(

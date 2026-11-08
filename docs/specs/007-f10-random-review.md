@@ -182,8 +182,8 @@ cd frontend; npm run lint; npm run build
 
 | 命令 / 场景 | 结果 |
 |---|---|
-| `backend pytest tests/test_review.py -q` | **11 passed**；RED 阶段同一命令 11 failed（端点不存在，全部 404） |
-| `backend pytest -q` | **208 passed**（含 `test_architecture` 棘轮、`test_seed`、`test_review`） |
+| `backend pytest tests/test_review.py -q` | **12 passed**；RED 阶段端点不存在，全部 404；补钉「当天其他场次 / 时区归属」用例时，临时去掉日期过滤可复现 RED（当天的 07:00 上海场次被抽中） |
+| `backend pytest -q` | **212 passed**（含 `test_architecture` 棘轮、`test_seed`、`test_review`） |
 | `frontend npm run lint` | 0 errors（1 条既有 `button.tsx` fast-refresh 警告） |
 | `frontend npm run build` | `tsc -b && vite build` 通过 |
 | E2E API（PostgreSQL + `python -m app.main` + Vite 5173 同启） | reset seed → 小明新场次走 ①②③ 到 step 3，`GET /api/review/random` 抽中 6 天种子之一（2026-11-04），任务原文与感想非空；小刚（新账号首场）返回 `item=null` |
@@ -196,7 +196,7 @@ cd frontend; npm run lint; npm run build
 
 ### 8.2 测试已编写 vs 已运行通过
 
-- 后端：`backend/tests/test_review.py` 11 项**已编写并已运行通过**（含验收条件 1–8 与 422/404）。
+- 后端：`backend/tests/test_review.py` 12 项**已编写并已运行通过**（含验收条件 1–8、422/404、当天其他场次与时区归属钉住）。
 - 前端：项目无前端测试基建，未新增自动化测试；空态 / 卡片 / 点击跳转 / 完成推进为浏览器手工验证 + lint/build。
 
 ### 8.3 未验证项及原因

@@ -41,6 +41,7 @@ export default function StepReview({ sessionId, onDone }: StepProps) {
       try {
         const res = await apiClient.get<RandomReviewResponse>("/review/random", {
           params: { exclude_session_id: sessionId },
+          timeout: 5000, // 保证「完成」最多等 5 秒，避免请求悬挂时卡住结算
         })
         if (cancelled) return
         setItem(res.data.item)
@@ -104,7 +105,7 @@ export default function StepReview({ sessionId, onDone }: StepProps) {
           </button>
         )}
         {error && <p className="text-sm text-destructive">{error}</p>}
-        <Button className="w-full" variant="outline" onClick={handleDone} disabled={busy}>
+        <Button className="w-full" variant="outline" onClick={handleDone} disabled={busy || !loaded}>
           {busy ? "处理中…" : "完成"}
         </Button>
       </CardContent>
