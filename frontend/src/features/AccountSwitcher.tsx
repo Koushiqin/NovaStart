@@ -1,7 +1,6 @@
 import { useNavigate } from "react-router-dom"
 import { logout as logoutApi } from "@/api/auth"
 import { useAppStore } from "@/store/app"
-import { Button } from "@/components/ui/button"
 
 // 右上角账号区：未登录 → 登录/注册；已登录 → 用户名 + 切换账号 + 登出
 export default function AccountSwitcher() {
@@ -24,26 +23,29 @@ export default function AccountSwitcher() {
     navigate("/")
   }
 
+  const textLink =
+    "font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:text-foreground"
+
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-3">
       {userId == null ? (
         <>
-          <Button size="sm" variant="outline" onClick={() => navigate("/login")}>
+          <button type="button" className={textLink} onClick={() => navigate("/login")}>
             登录
-          </Button>
-          <Button size="sm" onClick={() => navigate("/register")}>
+          </button>
+          <button type="button" className={textLink} onClick={() => navigate("/register")}>
             注册
-          </Button>
+          </button>
         </>
       ) : (
         <>
-          <span className="text-sm text-muted-foreground">{username}</span>
-          <Button size="sm" variant="outline" onClick={() => navigate("/login")}>
+          <span className={`hidden sm:inline ${textLink}`}>{username}</span>
+          <button type="button" className={textLink} onClick={() => navigate("/login")}>
             切换账号
-          </Button>
-          <Button size="sm" variant="ghost" onClick={handleLogout}>
+          </button>
+          <button type="button" className={textLink} onClick={handleLogout}>
             登出
-          </Button>
+          </button>
         </>
       )}
     </div>
