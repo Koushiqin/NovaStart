@@ -25,10 +25,17 @@ export default function Modal({ open, onClose, title, children, maxWidth = "max-
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className={`relative z-10 w-full ${maxWidth} rounded-lg border bg-background p-5 shadow-xl`}>
-        <div className="mb-4 flex items-center justify-between">
-          {title && <h2 className="text-lg font-semibold">{title}</h2>}
+      <div className="absolute inset-0 bg-background/70 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className={`relative z-10 w-full ${maxWidth} animate-in fade-in zoom-in-95 rounded-2xl border border-border/70 bg-surface-2 p-6 shadow-[0_24px_80px_-24px_rgba(0,0,0,0.9)] duration-200`}
+      >
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+              NOVASTART
+            </p>
+            {title && <h2 className="mt-1 text-lg font-semibold">{title}</h2>}
+          </div>
           <Button variant="ghost" size="icon" onClick={onClose} aria-label="关闭">
             <X className="h-4 w-4" />
           </Button>
