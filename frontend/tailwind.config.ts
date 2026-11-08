@@ -13,7 +13,7 @@ export default {
   			sm: 'calc(var(--radius) - 4px)'
   		},
   		colors: {
-  			background: 'var(--background)',
+  			background: 'oklch(var(--background-ch) / <alpha-value>)',
   			foreground: 'var(--foreground)',
   			card: {
   				DEFAULT: 'var(--card)',
@@ -24,15 +24,15 @@ export default {
   				foreground: 'var(--popover-foreground)'
   			},
   			primary: {
-  				DEFAULT: 'var(--primary)',
+  				DEFAULT: 'oklch(var(--primary-ch) / <alpha-value>)',
   				foreground: 'var(--primary-foreground)'
   			},
   			secondary: {
-  				DEFAULT: 'var(--secondary)',
+  				DEFAULT: 'oklch(var(--secondary-ch) / <alpha-value>)',
   				foreground: 'var(--secondary-foreground)'
   			},
   			muted: {
-  				DEFAULT: 'var(--muted)',
+  				DEFAULT: 'oklch(var(--muted-ch) / <alpha-value>)',
   				foreground: 'var(--muted-foreground)'
   			},
   			accent: {
@@ -40,16 +40,16 @@ export default {
   				foreground: 'var(--accent-foreground)'
   			},
   			destructive: {
-  				DEFAULT: 'var(--destructive)',
+  				DEFAULT: 'oklch(var(--destructive-ch) / <alpha-value>)',
   				foreground: 'var(--destructive-foreground)'
   			},
   			border: 'var(--border)',
   			input: 'var(--input)',
   			ring: 'var(--ring)',
   			surface: {
-  				DEFAULT: 'var(--surface-1)',
-  				1: 'var(--surface-1)',
-  				2: 'var(--surface-2)'
+  				DEFAULT: 'oklch(var(--surface-1-ch) / <alpha-value>)',
+  				1: 'oklch(var(--surface-1-ch) / <alpha-value>)',
+  				2: 'oklch(var(--surface-2-ch) / <alpha-value>)'
   			},
   			glow: {
   				DEFAULT: 'var(--glow)',

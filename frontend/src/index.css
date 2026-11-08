@@ -5,21 +5,30 @@
 @layer base {
   /* 深空紫黑：单套深色 token，html 常驻 class="dark"（无明暗切换） */
   :root {
-    --background: oklch(0.15 0.025 285);
-    --surface-1: oklch(0.21 0.032 285);
-    --surface-2: oklch(0.26 0.038 285);
+    /* 通道值供 Tailwind `oklch(var(--x-ch) / <alpha-value>)` 映射生成透明度修饰符；
+       完整值仍以 var(--x) 提供给直接引用处 */
+    --background-ch: 0.15 0.025 285;
+    --background: oklch(var(--background-ch));
+    --surface-1-ch: 0.21 0.032 285;
+    --surface-1: oklch(var(--surface-1-ch));
+    --surface-2-ch: 0.26 0.038 285;
+    --surface-2: oklch(var(--surface-2-ch));
     --foreground: oklch(0.96 0.01 285);
-    --muted: oklch(0.24 0.028 285);
+    --muted-ch: 0.24 0.028 285;
+    --muted: oklch(var(--muted-ch));
     --muted-foreground: oklch(0.70 0.02 285);
     --border: oklch(0.34 0.03 285 / 0.55);
     --input: oklch(0.33 0.03 285 / 0.6);
-    --primary: oklch(0.82 0.13 305);
+    --primary-ch: 0.82 0.13 305;
+    --primary: oklch(var(--primary-ch));
     --primary-foreground: oklch(0.16 0.02 285);
-    --secondary: oklch(0.25 0.03 285);
+    --secondary-ch: 0.25 0.03 285;
+    --secondary: oklch(var(--secondary-ch));
     --secondary-foreground: oklch(0.96 0.01 285);
     --accent: oklch(0.29 0.04 290);
     --accent-foreground: oklch(0.96 0.01 285);
-    --destructive: oklch(0.62 0.19 20);
+    --destructive-ch: 0.62 0.19 20;
+    --destructive: oklch(var(--destructive-ch));
     --destructive-foreground: oklch(0.98 0 0);
     --ring: oklch(0.80 0.12 305 / 0.9);
     --glow: oklch(0.86 0.13 305);
@@ -226,13 +235,13 @@
     display: none;
   }
 
-  /* 登录/注册流星装饰层（6 颗，纯 CSS） */
+  /* 登录/注册流星装饰层（6 颗，纯 CSS）；z-index 0 叠在页面底色之上、表单 z-10 之下 */
   .meteor-field {
-    position: fixed;
+    position: absolute;
     inset: 0;
     overflow: hidden;
     pointer-events: none;
-    z-index: -1;
+    z-index: 0;
   }
   .meteor-field .star {
     position: absolute;
