@@ -319,6 +319,13 @@ backend\.venv\Scripts\python.exe -m pytest backend/tests/test_architecture.py
 5. 结算四步与末态文案/按钮顺序 — 代码级：Task 18 diff 为 20 insertions / 2 deletions，全部展示层，`onDone` 时机与请求逻辑未动；运行（需活动会话）→ **未运行时核对**。
 6. lint / build / 架构棘轮 — **已运行验证** PASS（见上表）。
 
+### 最终 Review 修复（批 2 收尾，commit `c29c5e3`）
+
+| 问题 | 修复 | 验证 |
+|---|---|---|
+| `var(--x)` 映射下 `/70` 等透明度修饰符未生成：Modal 遮罩 `bg-background/70` 无底色、`hover:bg-primary/90` 等无反馈 | 颜色 token 增加通道变量（`--x-ch`），Tailwind 映射改 `oklch(var(--x-ch) / <alpha-value>)` | `npm run build` 通过；产物 CSS 含 `bg-background/70`、`hover:bg-primary/90`、`bg-surface/60`、`hover:bg-muted/60` 且带 alpha 值；lint 0 error |
+| 登录/注册流星层 `fixed` + `z-index:-1` 被页面不透明底色遮挡，流星不可见 | `.meteor-field` 改 `absolute` + `z-index:0`（表单保持 `z-10`） | `:5174/login` 运行时截图可见 ≥2 条流星轨迹，玻璃表单与 NOVASTART 描边标题正常，无 console error |
+
 ### 遗留问题
 
 - 未新增前端依赖、未生成/下载任何图片；后端零改动。
