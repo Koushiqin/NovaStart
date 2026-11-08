@@ -76,18 +76,23 @@ export type StarWallRenderer = (props: StarWallRendererProps) => ReactNode
 // 默认渲染：最近 30 天星星墙，服务端给出 state/level，前端只做三态渲染（empty 不绘制）
 export function DefaultStarWallRenderer({ wall }: StarWallRendererProps) {
   return (
-    <div className="grid grid-cols-10 justify-items-center gap-x-2 gap-y-2" aria-label="最近 30 天星星墙">
+    <div className="grid grid-cols-10 justify-items-center gap-2.5" aria-label="最近 30 天星星墙">
       {wall.map((day) => {
         if (day.state === "empty") {
-          return <span key={day.date} className="block h-4 w-4" aria-hidden />
+          return <span key={day.date} className="block h-5 w-5 sm:h-6 sm:w-6" aria-hidden />
         }
         return (
           <span
             key={day.date}
-            className="flex h-4 w-4 items-center justify-center"
+            className="flex h-5 w-5 items-center justify-center sm:h-6 sm:w-6"
             title={`${day.date} ${STATE_LABEL[day.state]}`}
           >
-            <StarIcon variant={day.state} level={day.level} className="h-4 w-4" />
+            <StarIcon
+              variant={day.state}
+              level={day.level}
+              glow={day.state === "lit"}
+              className="h-5 w-5 sm:h-6 sm:w-6"
+            />
           </span>
         )
       })}
