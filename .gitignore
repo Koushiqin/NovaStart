@@ -21,3 +21,4 @@ Thumbs.db
 
 # 本地过程文档（不入库）
 spec-coding-guide.md
+docs/design/
