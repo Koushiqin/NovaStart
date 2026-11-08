@@ -60,7 +60,7 @@ P4 把结算四步的断点与①写感想打通，第④步「回顾」只是�
 | `backend/app/models/session.py` | 有效场次 / 归属日事实源 | 不改；只读 `status`、`started_at`、`ended_at`、`task_id` |
 | `backend/app/models/reflection.py` | 感想事实源 | 不改；只读 `session_id`、`content` |
 | `backend/app/models/day_task.py` | 任务原文事实源 | 不改；只读 `raw_text` |
-| `backend/app/services/review_service.py`（新增） | 随机回顾唯一查询路径 | 新建理由见 §6.4；`random_past(db, user_id, exclude_session_id, clock) -> tuple[Session, str, str \| None] \| None`（返回会话、归属日 ISO、感想或 `None`） |
+| `backend/app/services/review_service.py`（新增） | 随机回顾唯一查询路径 | 新建理由见 §6.4；`random_past(db, user_id, exclude_session_id, clock) -> tuple[Session, str, str, str \| None] \| None`（返回会话、归属日 ISO、任务原文、感想或 `None`） |
 | `backend/app/schemas/review.py`（新增） | 回顾 API 契约 | 新建：`ReviewItem`、`RandomReviewResponse`（与 service 返回结构一一对应） |
 | `backend/app/routers/review.py`（新增） | 回顾 HTTP 入口 | 新建：`GET /api/review/random`，只解析 query、转发、组装 `server_time` |
 | `backend/app/main.py` | 路由注册 | 修改：注册 review router |
