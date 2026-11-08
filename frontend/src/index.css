@@ -176,6 +176,56 @@
     -webkit-backdrop-filter: blur(15px);
   }
 
+  /* 登录/注册提交按钮：紫→青渐变 + hover 扫光 */
+  .glass-submit {
+    position: relative;
+    display: block;
+    width: 100%;
+    overflow: hidden;
+    padding: 0.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 0.5rem;
+    background: linear-gradient(
+      90deg,
+      oklch(0.45 0.14 300) 0%,
+      oklch(0.55 0.09 210) 100%
+    );
+    color: #ffffff;
+    text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.5);
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.25rem;
+    text-transform: uppercase;
+    transition: all 0.2s ease-out;
+  }
+  .glass-submit::before {
+    content: "";
+    display: block;
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 0;
+    height: 85%;
+    opacity: 0;
+    background: #fff;
+    box-shadow: 0 0 50px 30px #fff;
+    transform: skewX(-20deg);
+  }
+  .glass-submit:hover {
+    box-shadow: 4px 5px 17px -4px rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+  }
+  .glass-submit:hover::before {
+    animation: sh02 0.5s 0s linear;
+  }
+  .glass-submit:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .glass-submit:disabled::before {
+    display: none;
+  }
+
   /* 登录/注册流星装饰层（6 颗，纯 CSS） */
   .meteor-field {
     position: fixed;
@@ -265,6 +315,20 @@
   }
 }
 
+@keyframes sh02 {
+  from {
+    opacity: 0;
+    left: 0%;
+  }
+  50% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    left: 100%;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .meteor-field {
     display: none;
@@ -274,5 +338,10 @@
   }
   .btn-glow::after {
     display: none;
+  }
+  .glass-submit,
+  .glass-submit:hover::before {
+    animation: none;
+    transition: none;
   }
 }
