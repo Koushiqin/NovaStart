@@ -178,7 +178,39 @@ cd frontend; npm run lint; npm run build
 
 ## 8. 执行结果、未验证项和遗留问题
 
-（待 Task 4 回填：跑过的命令与结果、未验证项及原因、遗留问题及边界；区分「测试已编写」与「测试已运行通过」。）
+### 8.1 已运行通过的验证（2026-11-08）
+
+| 命令 / 场景 | 结果 |
+|---|---|
+| `backend pytest tests/test_review.py -q` | **11 passed**；RED 阶段同一命令 11 failed（端点不存在，全部 404） |
+| `backend pytest -q` | **208 passed**（含 `test_architecture` 棘轮、`test_seed`、`test_review`） |
+| `frontend npm run lint` | 0 errors（1 条既有 `button.tsx` fast-refresh 警告） |
+| `frontend npm run build` | `tsc -b && vite build` 通过 |
+| E2E API（PostgreSQL + `python -m app.main` + Vite 5173 同启） | reset seed → 小明新场次走 ①②③ 到 step 3，`GET /api/review/random` 抽中 6 天种子之一（2026-11-04），任务原文与感想非空；小刚（新账号首场）返回 `item=null` |
+| 浏览器 `/settle`（小明，session 204） | 「第④步 · 回顾」+「过去的你 · 2026-11-07」卡片（任务原文 + 感想），点击卡片跳 `/records?date=2026-11-07`（占位页），PASS |
+| 浏览器 `/settle`（小刚，session 206） | 回顾区域只有「等待宇宙的讯息」+「完成」按钮，无卡片、无副标题 / 额外引导，PASS |
+| 第④步推进（小刚 session 205） | 首次浏览器检查中点击「完成」，随后 API summary 确认 `settle_step=4`、`status=settled`（advance → onDone 链路真实生效） |
+
+- 演示阈值：本次 E2E 通过 `SESSION_MIN_SECONDS=1` 启动后端加速（默认 300s），未修改 `.env` 或默认配置；仅用于本次运行。
+- `main.py` 注册 review router 后 `/docs` 正常列出 `GET /api/review/random`。
+
+### 8.2 测试已编写 vs 已运行通过
+
+- 后端：`backend/tests/test_review.py` 11 项**已编写并已运行通过**（含验收条件 1–8 与 422/404）。
+- 前端：项目无前端测试基建，未新增自动化测试；空态 / 卡片 / 点击跳转 / 完成推进为浏览器手工验证 + lint/build。
+
+### 8.3 未验证项及原因
+
+- `/records?date=` 的单日详情：当前记录页是占位页，允许忽略 query；真实详情属于 P8（本功能非目标），未验证。
+- 「不保证不重复」：随机行为，不做确定性断言；连续两场抽中同一条属预期。
+- 回顾加载失败分支（网络错误 / 非 200）：代码已实现（一行提示 + 保留完成按钮），未在浏览器制造该故障，无运行时证据。
+- 「完成」推进：本轮有真实点击证据（小刚 session 205 → step 4 / settled）；P4 的 advance 回归测试仍通过。
+
+### 8.4 遗留问题与边界
+
+- `RecordsPage` 需由 P8 支持 `?date=` 直开单日视图（本计划已把该 query 作为消费契约写入计划头部 Produces）。
+- E2E 在 dev 库留下本次演示任务 / 会话（小刚 session 205/206 等）；不影响后续 reset seed 或演示。
+- 随机回顾无手动刷新 / 换一条（按 F10 非目标）。
 
 ---
 
